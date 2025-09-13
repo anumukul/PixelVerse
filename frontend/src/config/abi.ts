@@ -1,5 +1,4 @@
-
-export const pixelNFTABI =  [
+export const pixelCanvasV2ABI= [
     {
       "inputs": [],
       "stateMutability": "nonpayable",
@@ -59,6 +58,37 @@ export const pixelNFTABI =  [
       "anonymous": false,
       "inputs": [
         {
+          "indexed": false,
+          "internalType": "uint256[]",
+          "name": "tokenIds",
+          "type": "uint256[]"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "painter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "totalCost",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "timestamp",
+          "type": "uint32"
+        }
+      ],
+      "name": "BatchPixelsPainted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
           "indexed": true,
           "internalType": "address",
           "name": "previousOwner",
@@ -91,30 +121,73 @@ export const pixelNFTABI =  [
         },
         {
           "indexed": false,
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "x",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
           "indexed": false,
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "y",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
           "indexed": false,
-          "internalType": "string",
+          "internalType": "uint32",
           "name": "color",
-          "type": "string"
+          "type": "uint32"
         },
         {
           "indexed": false,
-          "internalType": "uint256",
+          "internalType": "uint32",
           "name": "timestamp",
-          "type": "uint256"
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "version",
+          "type": "uint16"
         }
       ],
       "name": "PixelPainted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "startX",
+          "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "startY",
+          "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "width",
+          "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "height",
+          "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "timestamp",
+          "type": "uint32"
+        }
+      ],
+      "name": "RegionUpdated",
       "type": "event"
     },
     {
@@ -143,13 +216,44 @@ export const pixelNFTABI =  [
       "type": "event"
     },
     {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "x",
+          "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "y",
+          "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "timestamp",
+          "type": "uint32"
+        }
+      ],
+      "name": "UserCursorMoved",
+      "type": "event"
+    },
+    {
       "inputs": [],
       "name": "CANVAS_HEIGHT",
       "outputs": [
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "",
-          "type": "uint256"
+          "type": "uint16"
         }
       ],
       "stateMutability": "view",
@@ -160,9 +264,9 @@ export const pixelNFTABI =  [
       "name": "CANVAS_WIDTH",
       "outputs": [
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "",
-          "type": "uint256"
+          "type": "uint16"
         }
       ],
       "stateMutability": "view",
@@ -208,19 +312,19 @@ export const pixelNFTABI =  [
     {
       "inputs": [
         {
-          "internalType": "uint256[]",
+          "internalType": "uint16[]",
           "name": "xCoords",
-          "type": "uint256[]"
+          "type": "uint16[]"
         },
         {
-          "internalType": "uint256[]",
+          "internalType": "uint16[]",
           "name": "yCoords",
-          "type": "uint256[]"
+          "type": "uint16[]"
         },
         {
-          "internalType": "string[]",
+          "internalType": "uint32[]",
           "name": "colors",
-          "type": "string[]"
+          "type": "uint32[]"
         }
       ],
       "name": "batchPaintPixels",
@@ -231,14 +335,9 @@ export const pixelNFTABI =  [
     {
       "inputs": [
         {
-          "internalType": "uint256",
+          "internalType": "bytes32",
           "name": "",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
+          "type": "bytes32"
         }
       ],
       "name": "coordinateToTokenId",
@@ -274,32 +373,64 @@ export const pixelNFTABI =  [
     {
       "inputs": [
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "startX",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "startY",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "width",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "height",
-          "type": "uint256"
+          "type": "uint16"
         }
       ],
       "name": "getCanvasRegion",
       "outputs": [
         {
-          "internalType": "string[]",
-          "name": "colors",
-          "type": "string[]"
+          "components": [
+            {
+              "internalType": "uint16",
+              "name": "x",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint16",
+              "name": "y",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint32",
+              "name": "color",
+              "type": "uint32"
+            },
+            {
+              "internalType": "address",
+              "name": "painter",
+              "type": "address"
+            },
+            {
+              "internalType": "uint32",
+              "name": "timestamp",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint16",
+              "name": "version",
+              "type": "uint16"
+            }
+          ],
+          "internalType": "struct PixelCanvasV2.Pixel[]",
+          "name": "regionPixels",
+          "type": "tuple[]"
         }
       ],
       "stateMutability": "view",
@@ -310,14 +441,14 @@ export const pixelNFTABI =  [
       "name": "getCanvasStats",
       "outputs": [
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "width",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "height",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
           "internalType": "uint256",
@@ -328,6 +459,11 @@ export const pixelNFTABI =  [
           "internalType": "uint256",
           "name": "price",
           "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "totalSupply",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -336,14 +472,14 @@ export const pixelNFTABI =  [
     {
       "inputs": [
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "x",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "y",
-          "type": "uint256"
+          "type": "uint16"
         }
       ],
       "name": "getPixelByCoordinates",
@@ -351,19 +487,19 @@ export const pixelNFTABI =  [
         {
           "components": [
             {
-              "internalType": "uint256",
+              "internalType": "uint16",
               "name": "x",
-              "type": "uint256"
+              "type": "uint16"
             },
             {
-              "internalType": "uint256",
+              "internalType": "uint16",
               "name": "y",
-              "type": "uint256"
+              "type": "uint16"
             },
             {
-              "internalType": "string",
+              "internalType": "uint32",
               "name": "color",
-              "type": "string"
+              "type": "uint32"
             },
             {
               "internalType": "address",
@@ -371,12 +507,17 @@ export const pixelNFTABI =  [
               "type": "address"
             },
             {
-              "internalType": "uint256",
+              "internalType": "uint32",
               "name": "timestamp",
-              "type": "uint256"
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint16",
+              "name": "version",
+              "type": "uint16"
             }
           ],
-          "internalType": "struct PixelNFT.Pixel",
+          "internalType": "struct PixelCanvasV2.Pixel",
           "name": "",
           "type": "tuple"
         }
@@ -475,19 +616,19 @@ export const pixelNFTABI =  [
     {
       "inputs": [
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "x",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "y",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
-          "internalType": "string",
+          "internalType": "uint32",
           "name": "color",
-          "type": "string"
+          "type": "uint32"
         }
       ],
       "name": "paintPixel",
@@ -519,19 +660,19 @@ export const pixelNFTABI =  [
       "name": "pixels",
       "outputs": [
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "x",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "y",
-          "type": "uint256"
+          "type": "uint16"
         },
         {
-          "internalType": "string",
+          "internalType": "uint32",
           "name": "color",
-          "type": "string"
+          "type": "uint32"
         },
         {
           "internalType": "address",
@@ -539,9 +680,14 @@ export const pixelNFTABI =  [
           "type": "address"
         },
         {
-          "internalType": "uint256",
+          "internalType": "uint32",
           "name": "timestamp",
-          "type": "uint256"
+          "type": "uint32"
+        },
+        {
+          "internalType": "uint16",
+          "name": "version",
+          "type": "uint16"
         }
       ],
       "stateMutability": "view",
@@ -732,6 +878,24 @@ export const pixelNFTABI =  [
         }
       ],
       "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint16",
+          "name": "x",
+          "type": "uint16"
+        },
+        {
+          "internalType": "uint16",
+          "name": "y",
+          "type": "uint16"
+        }
+      ],
+      "name": "updateCursor",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

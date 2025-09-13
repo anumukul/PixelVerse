@@ -1,0 +1,26 @@
+{
+  "contractAddress": "0x390CA0EaAE8099B869222a899C4239ad58D2f876",
+  "contractName": "PixelCanvasV2",
+  "networkConfig": {
+    "chainId": "0xC458",
+    "chainName": "Somnia Testnet",
+    "rpcUrls": [
+      "https://dream-rpc.somnia.network/"
+    ],
+    "blockExplorerUrls": [
+      "https://shannon-explorer.somnia.network/"
+    ],
+    "nativeCurrency": {
+      "name": "STT",
+      "symbol": "STT",
+      "decimals": 18
+    }
+  },
+  "features": {
+    "batchPainting": true,
+    "realTimeEvents": true,
+    "cursorTracking": true,
+    "regionLoading": true,
+    "pixelHistory": true
+  }
+}
