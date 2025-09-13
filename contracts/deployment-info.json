@@ -1,0 +1,13 @@
+{
+  "network": "somniaTestnet",
+  "contractName": "PixelNFT",
+  "contractAddress": "0x9756Bb326d032c7f1Dd22b912Ceaf0C3ec2d373e",
+  "deployerAddress": "0xF00b3321E87d0CFABe761B18A84333537e97E055",
+  "transactionHash": "0x23b714a2dd4679f4fc4819f2a8690ab3ed7df02208df56b0cdb3b8467fcfa177",
+  "blockNumber": 175106020,
+  "timestamp": "2025-09-13T07:33:32.484Z",
+  "canvasWidth": "1000",
+  "canvasHeight": "1000",
+  "pixelPrice": "0.001",
+  "explorerUrl": "https://shannon-explorer.somnia.network/address/0x9756Bb326d032c7f1Dd22b912Ceaf0C3ec2d373e"
+}
