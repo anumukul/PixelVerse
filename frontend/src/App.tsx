@@ -43,12 +43,16 @@ function EnhancedPixelCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { address, isConnected } = useAccount();
 
-  // Contract reads
-  const { data: pixelPrice } = useReadContract({
-    address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: pixelCanvasV2ABI,
-    functionName: 'pixelPrice',
-  });
+  // Contract reads - FIXED
+const { data: pixelPrice, isLoading: priceLoading, error: priceError } = useReadContract({
+  address: CONTRACT_ADDRESS as `0x${string}`,
+  abi: pixelCanvasV2ABI,
+  functionName: 'pixelPrice',
+  query: {
+    enabled: !!CONTRACT_ADDRESS, 
+    retry: 3,
+  },
+});
 
   const { data: canvasStats } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
@@ -56,8 +60,52 @@ function EnhancedPixelCanvas() {
     functionName: 'getCanvasStats',
   });
 
+  // Load canvas region using useReadContract
+  const { data: regionData, refetch: refetchRegion } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: pixelCanvasV2ABI,
+    functionName: 'getCanvasRegion',
+    args: [0, 0, GRID_WIDTH, GRID_HEIGHT],
+    query: {
+      enabled: isConnected,
+    },
+  });
+
   const { writeContractAsync: paintPixel } = useWriteContract();
-  const { writeContractAsync: batchPaintPixels } = useWriteContract();
+
+  // ADDED: Debugging useEffect
+  useEffect(() => {
+    console.log('Contract read status:', {
+      pixelPrice,
+      priceLoading,
+      priceError,
+      isConnected,
+      CONTRACT_ADDRESS
+    });
+  }, [pixelPrice, priceLoading, priceError, isConnected]);
+
+  // Process loaded region data
+  useEffect(() => {
+    if (regionData && Array.isArray(regionData)) {
+      console.log(`Loading ${regionData.length} pixels from blockchain`);
+      const loadedPixels = new Map<string, Pixel>();
+      
+      regionData.forEach((pixelData: any) => {
+        const pixel: Pixel = {
+          x: Number(pixelData.x),
+          y: Number(pixelData.y),
+          color: `#${pixelData.color.toString(16).padStart(6, '0')}`,
+          owner: pixelData.painter,
+          timestamp: Number(pixelData.timestamp),
+          version: Number(pixelData.version)
+        };
+        loadedPixels.set(`${pixel.x}-${pixel.y}`, pixel);
+      });
+      
+      setPixels(loadedPixels);
+      console.log(`Loaded ${loadedPixels.size} pixels from blockchain`);
+    }
+  }, [regionData]);
 
   // Real-time event listening
   useWatchContractEvent({
@@ -86,58 +134,6 @@ function EnhancedPixelCanvas() {
       });
     },
   });
-
-  // Load canvas region on component mount
-  useEffect(() => {
-    if (isConnected) {
-      loadCanvasRegion(0, 0, GRID_WIDTH, GRID_HEIGHT);
-    }
-  }, [isConnected]);
-
-  // Load existing pixels from blockchain
-  const loadCanvasRegion = async (startX: number, startY: number, width: number, height: number) => {
-    setLoadingRegion(true);
-    try {
-      console.log(`Loading canvas region: ${startX}, ${startY}, ${width}x${height}`);
-      
-      // Call the contract to get region data
-      const response = await fetch('https://dream-rpc.somnia.network/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_call',
-          params: [{
-            to: CONTRACT_ADDRESS,
-            data: `0x${pixelCanvasV2ABI.find(f => f.name === 'getCanvasRegion')?.inputs ? 
-              '1234' : '1234'}`  // This needs proper encoding - we'll use a simpler approach
-          }, 'latest'],
-          id: 1
-        })
-      });
-
-      // Simpler approach: Load individual pixels by trying common coordinates
-      const loadedPixels = new Map<string, Pixel>();
-      
-      // For now, let's just load any pixels that were painted in this session
-      // In a full implementation, you'd query the contract properly
-      
-      setPixels(prev => {
-        const combined = new Map(prev);
-        loadedPixels.forEach((pixel, key) => {
-          combined.set(key, pixel);
-        });
-        return combined;
-      });
-      
-      console.log(`Loaded ${loadedPixels.size} pixels from blockchain`);
-      
-    } catch (error) {
-      console.error('Error loading canvas region:', error);
-    } finally {
-      setLoadingRegion(false);
-    }
-  };
 
   // Draw canvas with all pixels
   const drawCanvas = useCallback(() => {
@@ -219,10 +215,15 @@ function EnhancedPixelCanvas() {
     await paintSinglePixel(x, y, selectedColor);
   }, [isConnected, address, selectedColor]);
 
-  // Paint a single pixel
+  // Paint a single pixel - FIXED
   const paintSinglePixel = async (x: number, y: number, color: string) => {
-    if (!pixelPrice) {
-      alert("Contract not ready, please wait...");
+    console.log('Debug - pixelPrice value:', pixelPrice);
+    console.log('Debug - pixelPrice type:', typeof pixelPrice);
+    console.log('Debug - pixelPrice === undefined:', pixelPrice === undefined);
+
+    if (!pixelPrice || priceLoading) {
+      console.log('Price not ready:', { pixelPrice, priceLoading });
+      alert("Loading contract data, please wait...");
       return;
     }
 
@@ -268,6 +269,11 @@ function EnhancedPixelCanvas() {
     }
   };
 
+  // Refresh canvas data
+  const refreshCanvas = () => {
+    refetchRegion();
+  };
+
   return (
     <div style={{ marginTop: '20px' }}>
       <h2>Enhanced Interactive Canvas</h2>
@@ -278,6 +284,7 @@ function EnhancedPixelCanvas() {
           {isConnected ? '✅ Wallet Connected - Real-time updates active!' : '❌ Connect wallet to start painting'}
         </p>
         {loadingRegion && <p style={{ color: 'blue' }}>🔄 Loading canvas data from blockchain...</p>}
+        {priceLoading && <p style={{ color: 'orange' }}>🔄 Loading contract data...</p>}
       </div>
 
       {/* Canvas */}
@@ -310,6 +317,23 @@ function EnhancedPixelCanvas() {
         )}
       </div>
 
+      {/* Controls */}
+      <div style={{ marginTop: '15px' }}>
+        <button 
+          onClick={refreshCanvas}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          🔄 Refresh Canvas
+        </button>
+      </div>
+
       {/* Color Palette */}
       <div style={{ marginTop: '15px' }}>
         <h3>Select Color:</h3>
@@ -338,6 +362,7 @@ function EnhancedPixelCanvas() {
         <p><strong>My Pixels Painted:</strong> {paintCount}</p>
         <p><strong>Total Blockchain Pixels:</strong> {canvasStats ? String(canvasStats[2]) : 'Loading...'}</p>
         <p><strong>Pixel Price:</strong> {pixelPrice ? `${Number(pixelPrice) / 1e18} STT` : 'Loading...'}</p>
+        <p><strong>Price Loading:</strong> {priceLoading ? 'Yes' : 'No'}</p>
         <p><strong>Selected Color:</strong> 
           <span style={{backgroundColor: selectedColor, padding: '2px 8px', border: '1px solid black', marginLeft: '5px'}}>
             {selectedColor}
@@ -349,11 +374,12 @@ function EnhancedPixelCanvas() {
       <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#e3f2fd', borderRadius: '5px' }}>
         <strong>Enhanced Features:</strong>
         <ul>
-          <li>✅ Pixels now display persistently after painting</li>
+          <li>✅ Pixels now persist after page refresh</li>
           <li>✅ Real-time updates from other users via blockchain events</li>
           <li>✅ Canvas loads existing pixel data on startup</li>
           <li>✅ Visual feedback with loading states</li>
           <li>✅ Your owned pixels highlighted in gold</li>
+          <li>✅ Manual refresh button to reload from blockchain</li>
         </ul>
       </div>
     </div>
@@ -374,8 +400,8 @@ function App() {
             </div>
 
             <div style={{ backgroundColor: '#f3e5f5', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-              <h3>⚡ Enhanced with Real-Time Features</h3>
-              <p>Now with persistent pixel display, blockchain state loading, and real-time event synchronization!</p>
+              <h3>⚡ Enhanced with Persistent Storage</h3>
+              <p>Pixels now persist after page refresh and load from blockchain automatically!</p>
             </div>
 
             <EnhancedPixelCanvas />

@@ -1,4 +1,4 @@
-export const pixelCanvasV2ABI= [
+export const pixelCanvasV2ABI=[
     {
       "inputs": [],
       "stateMutability": "nonpayable",
