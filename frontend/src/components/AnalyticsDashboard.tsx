@@ -67,12 +67,34 @@ export const AnalyticsDashboard: React.FC<Props> = ({ className }) => {
     functionName: 'pixelPrice',
   });
 
+  // Debug logging
+  console.log('Contract data:', { canvasStats, pixelPrice, CONTRACT_ADDRESS });
+
+  // Process canvas stats when they arrive
+  useEffect(() => {
+    console.log('Canvas stats received:', canvasStats);
+    console.log('Pixel price received:', pixelPrice);
+    if (canvasStats && Array.isArray(canvasStats)) {
+      const totalPixels = Number(canvasStats[2] || 0);
+      const totalVolume = BigInt(canvasStats[3] || 0);
+      
+      setMetrics(prev => ({
+        ...prev,
+        totalTransactions: totalPixels,
+        totalVolume: totalVolume
+      }));
+      
+      console.log('Updated metrics with canvas stats:', { totalPixels, totalVolume });
+    }
+  }, [canvasStats, pixelPrice]);
+
   // Watch for real-time events
   useWatchContractEvent({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: pixelCanvasV2ABI,
     eventName: 'PixelPainted',
     onLogs(logs) {
+      console.log('PixelPainted event received:', logs);
       logs.forEach((log: any) => {
         const { tokenId, painter, x, y, color, timestamp } = log.args;
         
@@ -85,6 +107,8 @@ export const AnalyticsDashboard: React.FC<Props> = ({ className }) => {
           painter: painter as string,
           txHash: log.transactionHash || ''
         };
+
+        console.log('Processing new pixel:', newPixel);
 
         setPixelHistory(prev => [newPixel, ...prev.slice(0, 99)]); // Keep last 100
 
@@ -197,6 +221,11 @@ export const AnalyticsDashboard: React.FC<Props> = ({ className }) => {
     return `${(Number(value) / 1e18).toFixed(4)} STT`;
   };
 
+  // Calculate display values with proper fallbacks
+  const displayTotalPixels = canvasStats ? Number(canvasStats[2] || 0) : metrics.totalTransactions;
+  const displayPixelPrice = pixelPrice ? Number(pixelPrice) / 1e18 : 0;
+  const displayTotalVolume = canvasStats ? Number(canvasStats[3] || 0) / 1e18 : Number(metrics.totalVolume) / 1e18;
+
   return (
     <div className={`analytics-dashboard ${className || ''}`}>
       {/* Header */}
@@ -226,7 +255,7 @@ export const AnalyticsDashboard: React.FC<Props> = ({ className }) => {
       {/* Key Metrics */}
       <div className="metrics-grid">
         <div className="metric-card">
-          <div className="metric-value">{metrics.totalTransactions.toLocaleString()}</div>
+          <div className="metric-value">{displayTotalPixels.toLocaleString()}</div>
           <div className="metric-label">Total Pixels</div>
           <div className="metric-change">+{metrics.transactionsPerSecond.toFixed(2)}/sec</div>
         </div>
@@ -238,15 +267,15 @@ export const AnalyticsDashboard: React.FC<Props> = ({ className }) => {
         </div>
 
         <div className="metric-card">
-          <div className="metric-value">{formatEther(metrics.totalVolume)}</div>
+          <div className="metric-value">{displayTotalVolume.toFixed(4)} STT</div>
           <div className="metric-label">Total Volume</div>
           <div className="metric-change">Revenue generated</div>
         </div>
 
         <div className="metric-card">
-          <div className="metric-value">{metrics.transactionsPerSecond.toFixed(2)}</div>
-          <div className="metric-label">Pixels/Second</div>
-          <div className="metric-change">Current rate</div>
+          <div className="metric-value">{displayPixelPrice.toFixed(3)} STT</div>
+          <div className="metric-label">Pixel Price</div>
+          <div className="metric-change">Per pixel cost</div>
         </div>
       </div>
 
@@ -301,6 +330,11 @@ export const AnalyticsDashboard: React.FC<Props> = ({ className }) => {
               </div>
             </div>
           ))}
+          {pixelHistory.length === 0 && (
+            <div className="no-data" style={{ padding: '20px', textAlign: 'center' }}>
+              No pixels painted yet. Try using the batch tools!
+            </div>
+          )}
         </div>
       </div>
 
@@ -322,6 +356,11 @@ export const AnalyticsDashboard: React.FC<Props> = ({ className }) => {
               </div>
             </div>
           ))}
+          {topPainters.length === 0 && (
+            <div className="no-data" style={{ padding: '20px', textAlign: 'center' }}>
+              No artists yet. Be the first to paint!
+            </div>
+          )}
         </div>
       </div>
 
