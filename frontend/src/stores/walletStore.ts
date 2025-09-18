@@ -35,7 +35,7 @@ export const useWalletStore = create<WalletStore>(() => ({
     
     const hash = await writeContract({
       address: deploymentInfo.contractAddress as `0x${string}`,
-      abi: contractABI.abi,
+      abi: PixelCanvasABI,
       functionName: 'batchPaintPixels',
       args: [xCoords, yCoords, colors],
       value: totalCost

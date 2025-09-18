@@ -1,8 +1,10 @@
 import React from 'react';
 import { useCanvasStore } from '../stores/canvasStore';
+import { useContractEvents } from '../hooks/useContractEvents';
 
 export const CanvasControls: React.FC = () => {
   const { viewPort, setViewPort } = useCanvasStore();
+  const { refreshCanvas } = useContractEvents();
 
   const zoomIn = () => {
     const newScale = Math.min(10, viewPort.scale * 1.2);
@@ -54,6 +56,13 @@ export const CanvasControls: React.FC = () => {
           className="w-full px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm transition-colors"
         >
           Reset View
+        </button>
+
+        <button
+          onClick={refreshCanvas}
+          className="w-full px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded text-sm transition-colors"
+        >
+          Refresh Canvas
         </button>
       </div>
 

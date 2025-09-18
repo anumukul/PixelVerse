@@ -1,12 +1,21 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { WalletConnect } from './components/WalletConnect';
 import { ColorPalette } from './components/ColorPalette';
 import { CanvasControls } from './components/CanvasControls';
 import { PixelCanvas } from './components/PixelCanvas';
+import { LiveStats } from './components/LiveStats';
+import { useContractEvents } from './hooks/useContractEvents';
 
 function App() {
   const { isConnected } = useAccount();
+  const { loadCanvasRegion } = useContractEvents();
+
+  useEffect(() => {
+    if (isConnected) {
+      loadCanvasRegion(450, 450, 100, 100);
+    }
+  }, [isConnected, loadCanvasRegion]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -44,6 +53,7 @@ function App() {
               <>
                 <ColorPalette />
                 <CanvasControls />
+                <LiveStats />
               </>
             )}
           </div>
