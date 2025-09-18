@@ -28,6 +28,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
   const { paintPixel } = useWalletStore();
   const { address, isConnected } = useAccount();
   const { writeContract } = useWriteContract();
+  const pendingPixels = useRef(new Map<string, {x: number, y: number, timeout: NodeJS.Timeout}>());
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -82,12 +83,25 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     const { x, y } = screenToCanvas(e.clientX, e.clientY);
     
     if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
+      const pixelKey = `${x}-${y}`;
+      
+      if (pendingPixels.current.has(pixelKey)) {
+        return;
+      }
+
       try {
         addPendingPixel(x, y, selectedColor);
         
         const hash = await paintPixel(x, y, selectedColor, writeContract);
         if (hash && typeof hash === 'string') {
           onTransactionStart(hash);
+          
+          const timeout = setTimeout(() => {
+            removePendingPixel(x, y);
+            pendingPixels.current.delete(pixelKey);
+          }, 30000);
+          
+          pendingPixels.current.set(pixelKey, { x, y, timeout });
         }
       } catch (error) {
         console.error('Paint failed:', error);
@@ -129,6 +143,30 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
   const handleMouseUp = () => {
     setDragStart(null);
   };
+
+  useEffect(() => {
+    const cleanup = () => {
+      pendingPixels.current.forEach(({ timeout }) => {
+        clearTimeout(timeout);
+      });
+      pendingPixels.current.clear();
+    };
+
+    const interval = setInterval(() => {
+      pendingPixels.current.forEach(({ x, y, timeout }, key) => {
+        const actualPixel = pixels.get(`${x}-${y}`);
+        if (actualPixel && actualPixel.painter !== 'pending') {
+          clearTimeout(timeout);
+          pendingPixels.current.delete(key);
+        }
+      });
+    }, 1000);
+
+    return () => {
+      cleanup();
+      clearInterval(interval);
+    };
+  }, [pixels]);
 
   return (
     <canvas

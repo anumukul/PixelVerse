@@ -17,14 +17,14 @@ interface Transaction {
 
 function App() {
   const { isConnected } = useAccount();
-  const { loadCanvasRegion } = useContractEvents();
+  const { refreshCanvas } = useContractEvents();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   useEffect(() => {
     if (isConnected) {
-      loadCanvasRegion(450, 450, 100, 100);
+      refreshCanvas();
     }
-  }, [isConnected, loadCanvasRegion]);
+  }, [isConnected, refreshCanvas]);
 
   const addTransaction = (hash: string) => {
     setTransactions(prev => [...prev, {
