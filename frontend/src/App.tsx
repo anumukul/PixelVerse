@@ -1,6 +1,10 @@
 import React from 'react';
+import { useAccount } from 'wagmi';
+import { WalletConnect } from './components/WalletConnect';
 
 function App() {
+  const { isConnected } = useAccount();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b border-gray-200">
@@ -11,8 +15,10 @@ function App() {
               <p className="text-gray-600 mt-1">Collaborative NFT Canvas on Somnia</p>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-500">Not Connected</span>
-              <div className="w-2 h-2 rounded-full bg-red-500" />
+              <span className="text-sm text-gray-500">
+                {isConnected ? 'Connected to Somnia' : 'Not Connected'}
+              </span>
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             </div>
           </div>
         </div>
@@ -32,12 +38,7 @@ function App() {
           </div>
           
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
-              <h3 className="font-semibold text-gray-800 mb-3">Wallet</h3>
-              <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                Connect Wallet
-              </button>
-            </div>
+            <WalletConnect />
             
             <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
               <h3 className="font-semibold text-gray-800 mb-3">Canvas Stats</h3>

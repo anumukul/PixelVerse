@@ -13,7 +13,7 @@ export const somniaTestnet = defineChain({
 
 export const wagmiConfig = getDefaultConfig({
   appName: 'PixelVerse',
-  projectId: 'get-your-own-at-walletconnect-cloud',
+  projectId: '0a133d20b86fcd037c7daf44adccced2',
   chains: [somniaTestnet],
   ssr: false,
 });
