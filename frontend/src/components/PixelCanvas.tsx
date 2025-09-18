@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
 import { useCanvasStore } from '../stores/canvasStore';
+import { usePortfolioStore } from '../stores/portfolioStore';
 import { useWalletStore } from '../stores/walletStore';
 import { PixelTooltip } from './PixelTooltip';
 
@@ -41,12 +42,24 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     hideTooltip,
     getPixelAt
   } = useCanvasStore();
+  const { 
+    showOwnedPixels, 
+    updateOwnedPixels,
+    isUserPixel 
+  } = usePortfolioStore();
   const { paintPixel, updateCursorOnBlockchain } = useWalletStore();
   const { address, isConnected } = useAccount();
   const { writeContract } = useWriteContract();
   const pendingPixels = useRef(new Map<string, {x: number, y: number, timeout: NodeJS.Timeout}>());
   const lastBlockchainCursorUpdate = useRef(0);
   const lastCursorPosition = useRef({ x: -1, y: -1 });
+
+  // Update portfolio when pixels change
+  useEffect(() => {
+    if (address && isConnected) {
+      updateOwnedPixels(address, pixels);
+    }
+  }, [pixels, address, isConnected, updateOwnedPixels]);
 
   const getRandomColor = (address: string) => {
     const colors = [
@@ -88,6 +101,35 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
       const pixelSize = Math.max(2, viewPort.scale);
       ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
 
+      // Add ownership indicators
+      if (address && isUserPixel(pixel, address)) {
+        ctx.strokeStyle = '#10B981';
+        ctx.lineWidth = Math.max(1, viewPort.scale * 0.2);
+        ctx.globalAlpha = 0.8;
+        ctx.strokeRect(screenX - 1, screenY - 1, pixelSize + 2, pixelSize + 2);
+        
+        // Add corner indicator for owned pixels
+        if (viewPort.scale >= 3) {
+          ctx.fillStyle = '#10B981';
+          ctx.fillRect(screenX + pixelSize - 2, screenY, 2, 2);
+        }
+      }
+
+      // Highlight owned pixels when feature is active
+      if (showOwnedPixels && address && isUserPixel(pixel, address)) {
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = Math.max(2, viewPort.scale * 0.3);
+        ctx.globalAlpha = 1.0;
+        ctx.strokeRect(screenX - 2, screenY - 2, pixelSize + 4, pixelSize + 4);
+        
+        // Add glow effect
+        ctx.shadowColor = '#F59E0B';
+        ctx.shadowBlur = Math.max(2, viewPort.scale * 0.5);
+        ctx.strokeRect(screenX - 1, screenY - 1, pixelSize + 2, pixelSize + 2);
+        ctx.shadowBlur = 0;
+      }
+
+      // Hover highlight
       if (hoveredPixel && pixel.x === hoveredPixel.x && pixel.y === hoveredPixel.y) {
         ctx.strokeStyle = '#F59E0B';
         ctx.lineWidth = 2;
@@ -96,6 +138,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
       }
     });
 
+    // Batch selection rectangle
     if (batchMode && selection) {
       const minX = Math.min(selection.startX, selection.endX);
       const maxX = Math.max(selection.startX, selection.endX);
@@ -117,6 +160,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
       ctx.fillRect(screenStartX, screenStartY, screenEndX - screenStartX, screenEndY - screenStartY);
     }
 
+    // User cursors
     cursors.forEach((cursor) => {
       if (cursor.address === address) return;
       
@@ -152,7 +196,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     });
     
     ctx.globalAlpha = 1.0; 
-  }, [pixels, cursors, viewPort, address, batchMode, selection, selectedColor, hoveredPixel]);
+  }, [pixels, cursors, viewPort, address, batchMode, selection, selectedColor, hoveredPixel, showOwnedPixels, isUserPixel]);
 
   useEffect(() => {
     draw();

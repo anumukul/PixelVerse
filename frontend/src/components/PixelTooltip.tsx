@@ -1,4 +1,6 @@
 import React from 'react';
+import { useAccount } from 'wagmi';
+import { usePortfolioStore } from '../stores/portfolioStore';
 import type { Pixel } from '../types';
 
 interface PixelTooltipProps {
@@ -12,6 +14,9 @@ export const PixelTooltip: React.FC<PixelTooltipProps> = ({
   position, 
   visible 
 }) => {
+  const { address } = useAccount();
+  const { isUserPixel } = usePortfolioStore();
+
   if (!visible || !pixel) return null;
 
   const formatAddress = (address: string) => {
@@ -23,9 +28,15 @@ export const PixelTooltip: React.FC<PixelTooltipProps> = ({
     return new Date(timestamp * 1000).toLocaleString();
   };
 
+  const isOwned = address && isUserPixel(pixel, address);
+
   return (
     <div
-      className="absolute z-50 bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg text-sm pointer-events-none"
+      className={`absolute z-50 px-3 py-2 rounded-lg shadow-lg text-sm pointer-events-none ${
+        isOwned 
+          ? 'bg-green-900 text-white border border-green-600' 
+          : 'bg-gray-900 text-white'
+      }`}
       style={{
         left: position.x + 10,
         top: position.y - 10,
@@ -33,8 +44,11 @@ export const PixelTooltip: React.FC<PixelTooltipProps> = ({
       }}
     >
       <div className="space-y-1">
-        <div className="font-medium">
-          Pixel ({pixel.x}, {pixel.y})
+        <div className="font-medium flex items-center gap-2">
+          <span>Pixel ({pixel.x}, {pixel.y})</span>
+          {isOwned && (
+            <span className="text-xs bg-green-600 px-1 rounded">YOURS</span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <div 
@@ -43,7 +57,7 @@ export const PixelTooltip: React.FC<PixelTooltipProps> = ({
           />
           <span className="text-gray-300">{pixel.color}</span>
         </div>
-        <div className="text-gray-300">
+        <div className={isOwned ? 'text-green-200' : 'text-gray-300'}>
           Owner: {formatAddress(pixel.painter)}
         </div>
         {pixel.painter !== 'pending' && (
@@ -52,12 +66,19 @@ export const PixelTooltip: React.FC<PixelTooltipProps> = ({
               Painted: {formatTimestamp(pixel.timestamp)}
             </div>
             <div className="text-gray-400 text-xs">
-              Version: {pixel.version}
+              Version: {pixel.version} • Value: 0.001 STT
             </div>
           </>
         )}
+        {isOwned && (
+          <div className="text-green-300 text-xs font-medium">
+            Your NFT Pixel
+          </div>
+        )}
       </div>
-      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+      <div className={`absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent ${
+        isOwned ? 'border-t-green-900' : 'border-t-gray-900'
+      }`} />
     </div>
   );
 };
