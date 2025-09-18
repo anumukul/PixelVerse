@@ -1,7 +1,18 @@
 import { create } from 'zustand';
 import type { Pixel, UserCursor, CanvasState } from '../types/index';
 
+interface BatchSelection {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  isSelecting: boolean;
+}
+
 interface CanvasStore extends CanvasState {
+  batchMode: boolean;
+  selection: BatchSelection | null;
+  
   setPixel: (pixel: Pixel) => void;
   updateCursor: (cursor: UserCursor) => void;
   setSelectedColor: (color: string) => void;
@@ -14,6 +25,14 @@ interface CanvasStore extends CanvasState {
   addPendingPixel: (x: number, y: number, color: string) => void;
   removePendingPixel: (x: number, y: number) => void;
   getActiveCursorsCount: () => number;
+  
+  setBatchMode: (enabled: boolean) => void;
+  startSelection: (x: number, y: number) => void;
+  updateSelection: (x: number, y: number) => void;
+  endSelection: () => void;
+  clearSelection: () => void;
+  getSelectedPixels: () => Array<{x: number, y: number}>;
+  getSelectionCost: () => number;
 }
 
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
@@ -23,6 +42,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   viewPort: { x: 500, y: 500, scale: 4 },
   isLoading: false,
   dragStart: null,
+  batchMode: false,
+  selection: null,
 
   setPixel: (pixel) => {
     const current = get();
@@ -114,6 +135,78 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     });
     
     return activeCount;
+  },
+
+  setBatchMode: (enabled) => {
+    set({ batchMode: enabled });
+    if (!enabled) {
+      set({ selection: null });
+    }
+  },
+
+  startSelection: (x, y) => {
+    set({
+      selection: {
+        startX: x,
+        startY: y,
+        endX: x,
+        endY: y,
+        isSelecting: true
+      }
+    });
+  },
+
+  updateSelection: (x, y) => {
+    set((state) => {
+      if (!state.selection) return state;
+      return {
+        selection: {
+          ...state.selection,
+          endX: x,
+          endY: y
+        }
+      };
+    });
+  },
+
+  endSelection: () => {
+    set((state) => {
+      if (!state.selection) return state;
+      return {
+        selection: {
+          ...state.selection,
+          isSelecting: false
+        }
+      };
+    });
+  },
+
+  clearSelection: () => {
+    set({ selection: null });
+  },
+
+  getSelectedPixels: () => {
+    const { selection } = get();
+    if (!selection) return [];
+    
+    const pixels = [];
+    const minX = Math.min(selection.startX, selection.endX);
+    const maxX = Math.max(selection.startX, selection.endX);
+    const minY = Math.min(selection.startY, selection.endY);
+    const maxY = Math.max(selection.startY, selection.endY);
+    
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = minY; y <= maxY; y++) {
+        pixels.push({ x, y });
+      }
+    }
+    
+    return pixels;
+  },
+
+  getSelectionCost: () => {
+    const pixels = get().getSelectedPixels();
+    return pixels.length * 0.001;
   },
 
   setSelectedColor: (color) => set({ selectedColor: color }),

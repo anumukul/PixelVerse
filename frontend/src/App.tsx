@@ -6,6 +6,7 @@ import { CanvasControls } from './components/CanvasControls';
 import { PixelCanvas } from './components/PixelCanvas';
 import { LiveStats } from './components/LiveStats';
 import { TransactionToast } from './components/TransactionToast';
+import { BatchPaintControls } from './components/BatchPaintControls';
 import { useContractEvents } from './hooks/useContractEvents';
 
 interface Transaction {
@@ -83,6 +84,9 @@ function App() {
             {isConnected && (
               <>
                 <ColorPalette />
+                <BatchPaintControls 
+                  onTransactionStart={addTransaction}
+                />
                 <CanvasControls />
                 <LiveStats />
               </>
@@ -103,7 +107,7 @@ function App() {
                 <li>• Each pixel becomes an NFT</li>
                 <li>• Real-time collaborative canvas</li>
                 <li>• High-speed Somnia blockchain</li>
-                <li>• Batch painting support</li>
+                <li>• Batch painting for efficiency</li>
               </ul>
             </div>
           </div>

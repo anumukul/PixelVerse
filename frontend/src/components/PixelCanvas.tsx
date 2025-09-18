@@ -4,7 +4,7 @@ import { useCanvasStore } from '../stores/canvasStore';
 import { useWalletStore } from '../stores/walletStore';
 
 const CANVAS_SIZE = 1000;
-const CURSOR_BLOCKCHAIN_THROTTLE = 3000; 
+const CURSOR_BLOCKCHAIN_THROTTLE = 3000;
 
 interface PixelCanvasProps {
   onTransactionStart: (hash: string) => void;
@@ -22,11 +22,16 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     selectedColor, 
     viewPort, 
     dragStart,
+    batchMode,
+    selection,
     setDragStart,
     setViewPort,
     addPendingPixel,
     removePendingPixel,
-    updateCursor
+    updateCursor,
+    startSelection,
+    updateSelection,
+    endSelection
   } = useCanvasStore();
   const { paintPixel, updateCursorOnBlockchain } = useWalletStore();
   const { address, isConnected } = useAccount();
@@ -76,6 +81,27 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
       ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
     });
 
+    if (batchMode && selection) {
+      const minX = Math.min(selection.startX, selection.endX);
+      const maxX = Math.max(selection.startX, selection.endX);
+      const minY = Math.min(selection.startY, selection.endY);
+      const maxY = Math.max(selection.startY, selection.endY);
+      
+      const screenStartX = (minX - viewPort.x) * viewPort.scale + canvas.width / 2;
+      const screenStartY = (minY - viewPort.y) * viewPort.scale + canvas.height / 2;
+      const screenEndX = (maxX + 1 - viewPort.x) * viewPort.scale + canvas.width / 2;
+      const screenEndY = (maxY + 1 - viewPort.y) * viewPort.scale + canvas.height / 2;
+      
+      ctx.strokeStyle = '#3B82F6';
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.8;
+      ctx.strokeRect(screenStartX, screenStartY, screenEndX - screenStartX, screenEndY - screenStartY);
+      
+      ctx.fillStyle = selectedColor;
+      ctx.globalAlpha = 0.2;
+      ctx.fillRect(screenStartX, screenStartY, screenEndX - screenStartX, screenEndY - screenStartY);
+    }
+
     cursors.forEach((cursor) => {
       if (cursor.address === address) return;
       
@@ -111,7 +137,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     });
     
     ctx.globalAlpha = 1.0; 
-  }, [pixels, cursors, viewPort, address]);
+  }, [pixels, cursors, viewPort, address, batchMode, selection, selectedColor]);
 
   useEffect(() => {
     draw();
@@ -132,11 +158,16 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (dragStart) {
+    if (dragStart && !batchMode) {
       const deltaX = (e.clientX - dragStart.x) / viewPort.scale;
       const deltaY = (e.clientY - dragStart.y) / viewPort.scale;
       setViewPort(viewPort.x - deltaX, viewPort.y - deltaY, viewPort.scale);
       setDragStart({ x: e.clientX, y: e.clientY });
+    } else if (batchMode && selection?.isSelecting) {
+      const { x, y } = screenToCanvas(e.clientX, e.clientY);
+      if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
+        updateSelection(x, y);
+      }
     } else if (isConnected && address) {
       const { x, y } = screenToCanvas(e.clientX, e.clientY);
       
@@ -166,6 +197,8 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     const { x, y } = screenToCanvas(e.clientX, e.clientY);
     
     if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
+      if (batchMode) return;
+      
       const pixelKey = `${x}-${y}`;
       
       if (pendingPixels.current.has(pixelKey)) {
@@ -193,6 +226,26 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     }
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const { x, y } = screenToCanvas(e.clientX, e.clientY);
+    
+    if (e.button === 2 && !batchMode) {
+      setDragStart({ x: e.clientX, y: e.clientY });
+    } else if (batchMode && e.button === 0) {
+      if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
+        startSelection(x, y);
+      }
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (batchMode && selection?.isSelecting) {
+      endSelection();
+    } else {
+      setDragStart(null);
+    }
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -207,16 +260,6 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     canvas.addEventListener('wheel', handleWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', handleWheel);
   }, [viewPort, setViewPort]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 2) {
-      setDragStart({ x: e.clientX, y: e.clientY });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setDragStart(null);
-  };
 
   useEffect(() => {
     const cleanup = () => {
@@ -242,12 +285,14 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     };
   }, [pixels]);
 
+  const cursorClass = batchMode ? 'cursor-crosshair' : 'cursor-crosshair';
+
   return (
     <canvas
       ref={canvasRef}
       width={800}
       height={600}
-      className="border border-gray-300 cursor-crosshair select-none"
+      className={`border border-gray-300 select-none ${cursorClass}`}
       onClick={handleClick}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
