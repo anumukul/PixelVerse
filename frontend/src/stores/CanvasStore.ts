@@ -13,6 +13,7 @@ interface CanvasStore extends CanvasState {
   clearCursors: () => void;
   addPendingPixel: (x: number, y: number, color: string) => void;
   removePendingPixel: (x: number, y: number) => void;
+  getActiveCursorsCount: () => number;
 }
 
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
@@ -28,7 +29,6 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     const key = current.getPixelKey(pixel.x, pixel.y);
     const existing = current.pixels.get(key);
     
-    // Skip if identical pixel already exists
     if (existing && 
         existing.x === pixel.x && 
         existing.y === pixel.y && 
@@ -76,11 +76,45 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     });
   },
 
-  updateCursor: (cursor) => set((state) => {
-    const newCursors = new Map(state.cursors);
-    newCursors.set(cursor.address, cursor);
-    return { cursors: newCursors };
-  }),
+  updateCursor: (cursor) => {
+    const now = Date.now();
+    const cursorWithTimestamp = { ...cursor, timestamp: now };
+    
+    set((state) => {
+      const newCursors = new Map(state.cursors);
+      newCursors.set(cursor.address, cursorWithTimestamp);
+      return { cursors: newCursors };
+    });
+  },
+
+  clearCursors: () => {
+    const now = Date.now();
+    const CURSOR_TIMEOUT = 15000;
+    
+    set((state) => {
+      const newCursors = new Map();
+      state.cursors.forEach((cursor, address) => {
+        if (now - cursor.timestamp < CURSOR_TIMEOUT) {
+          newCursors.set(address, cursor);
+        }
+      });
+      return { cursors: newCursors };
+    });
+  },
+
+  getActiveCursorsCount: () => {
+    const now = Date.now();
+    const CURSOR_TIMEOUT = 15000;
+    let activeCount = 0;
+    
+    get().cursors.forEach((cursor) => {
+      if (now - cursor.timestamp < CURSOR_TIMEOUT) {
+        activeCount++;
+      }
+    });
+    
+    return activeCount;
+  },
 
   setSelectedColor: (color) => set({ selectedColor: color }),
   setViewPort: (x, y, scale) => set({ viewPort: { x, y, scale } }),
@@ -90,6 +124,5 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   getPixelAt: (x, y) => {
     const key = get().getPixelKey(x, y);
     return get().pixels.get(key);
-  },
-  clearCursors: () => set({ cursors: new Map() })
+  }
 }));

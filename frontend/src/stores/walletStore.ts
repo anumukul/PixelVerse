@@ -9,10 +9,19 @@ interface WalletStore {
     pixels: Array<{x: number, y: number, color: string}>, 
     writeContract: any
   ) => Promise<string>;
+  updateCursorOnBlockchain: (x: number, y: number) => Promise<void>;
+  lastBlockchainCursorUpdate: number;
+  isUpdatingCursor: boolean;
 }
 
-export const useWalletStore = create<WalletStore>(() => ({
+let writeContractRef: any = null;
+
+export const useWalletStore = create<WalletStore>((set, get) => ({
+  lastBlockchainCursorUpdate: 0,
+  isUpdatingCursor: false,
+
   paintPixel: async (x, y, color, writeContract) => {
+    writeContractRef = writeContract;
     const colorValue = parseInt(color.slice(1), 16);
     
     const hash = await writeContract({
@@ -27,6 +36,7 @@ export const useWalletStore = create<WalletStore>(() => ({
   },
 
   batchPaintPixels: async (pixels, writeContract) => {
+    writeContractRef = writeContract;
     const xCoords = pixels.map(p => p.x);
     const yCoords = pixels.map(p => p.y);
     const colors = pixels.map(p => parseInt(p.color.slice(1), 16));
@@ -42,5 +52,33 @@ export const useWalletStore = create<WalletStore>(() => ({
     });
     
     return hash;
+  },
+
+  updateCursorOnBlockchain: async (x, y) => {
+    if (!writeContractRef) return;
+    
+    const state = get();
+    const now = Date.now();
+    
+    if (state.isUpdatingCursor || now - state.lastBlockchainCursorUpdate < 3000) {
+      return;
+    }
+
+    set({ isUpdatingCursor: true });
+
+    try {
+      await writeContractRef({
+        address: deploymentInfo.contractAddress as `0x${string}`,
+        abi: PixelCanvasABI,
+        functionName: 'updateCursor',
+        args: [x, y]
+      });
+      
+      set({ lastBlockchainCursorUpdate: now });
+    } catch (error) {
+      
+    } finally {
+      set({ isUpdatingCursor: false });
+    }
   }
 }));

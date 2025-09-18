@@ -8,7 +8,7 @@ import { formatEther } from 'viem';
 
 export const LiveStats: React.FC = () => {
   const publicClient = usePublicClient();
-  const { pixels, cursors } = useCanvasStore();
+  const { pixels, getActiveCursorsCount } = useCanvasStore();
   const [stats, setStats] = useState<CanvasStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -87,7 +87,7 @@ export const LiveStats: React.FC = () => {
         
         <div className="flex justify-between">
           <span className="text-gray-600">Active Users</span>
-          <span className="font-mono">{cursors.size}</span>
+          <span className="font-mono">{getActiveCursorsCount()}</span>
         </div>
       </div>
     </div>

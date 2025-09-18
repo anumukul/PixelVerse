@@ -1,17 +1,19 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { usePublicClient, useWatchContractEvent } from 'wagmi';
+import { usePublicClient, useWatchContractEvent, useAccount } from 'wagmi';
 import { useCanvasStore } from '../stores/canvasStore';
-import type { Pixel } from '../types/index';
+import type { Pixel, UserCursor } from '../types/index';
 import deploymentInfo from '../../deployment-info.json';
 import { PixelCanvasABI } from '../contracts/PixelCanvas';
 
 export const useContractEvents = () => {
   const publicClient = usePublicClient();
-  const { setPixel, getPixelAt } = useCanvasStore();
+  const { address } = useAccount();
+  const { setPixel, getPixelAt, updateCursor, clearCursors } = useCanvasStore();
   const processedEvents = useRef(new Set<string>());
   const loadedRegions = useRef(new Set<string>());
   const isLoadingRegion = useRef(new Set<string>());
   const paintedPixelCoords = useRef(new Set<string>());
+  const cursorCleanupInterval = useRef<NodeJS.Timeout>();
 
   useWatchContractEvent({
     address: deploymentInfo.contractAddress as `0x${string}`,
@@ -46,6 +48,38 @@ export const useContractEvents = () => {
       });
     },
   });
+
+  useWatchContractEvent({
+    address: deploymentInfo.contractAddress as `0x${string}`,
+    abi: PixelCanvasABI,
+    eventName: 'UserCursorMoved',
+    onLogs(logs) {
+      logs.forEach((log) => {
+        const { args } = log;
+        if (args && args.user !== address) {
+          const cursor: UserCursor = {
+            address: args.user as string,
+            x: Number(args.x),
+            y: Number(args.y),
+            timestamp: Number(args.timestamp)
+          };
+          updateCursor(cursor);
+        }
+      });
+    },
+  });
+
+  useEffect(() => {
+    cursorCleanupInterval.current = setInterval(() => {
+      clearCursors();
+    }, 5000);
+
+    return () => {
+      if (cursorCleanupInterval.current) {
+        clearInterval(cursorCleanupInterval.current);
+      }
+    };
+  }, [clearCursors]);
 
   const loadCanvasRegion = useCallback(async (startX: number, startY: number, width: number, height: number) => {
     if (!publicClient) return;

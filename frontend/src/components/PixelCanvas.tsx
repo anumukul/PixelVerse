@@ -4,6 +4,7 @@ import { useCanvasStore } from '../stores/canvasStore';
 import { useWalletStore } from '../stores/walletStore';
 
 const CANVAS_SIZE = 1000;
+const CURSOR_BLOCKCHAIN_THROTTLE = 3000; 
 
 interface PixelCanvasProps {
   onTransactionStart: (hash: string) => void;
@@ -17,18 +18,37 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { 
     pixels, 
+    cursors,
     selectedColor, 
     viewPort, 
     dragStart,
     setDragStart,
     setViewPort,
     addPendingPixel,
-    removePendingPixel
+    removePendingPixel,
+    updateCursor
   } = useCanvasStore();
-  const { paintPixel } = useWalletStore();
+  const { paintPixel, updateCursorOnBlockchain } = useWalletStore();
   const { address, isConnected } = useAccount();
   const { writeContract } = useWriteContract();
   const pendingPixels = useRef(new Map<string, {x: number, y: number, timeout: NodeJS.Timeout}>());
+  const lastBlockchainCursorUpdate = useRef(0);
+  const lastCursorPosition = useRef({ x: -1, y: -1 });
+
+  const getRandomColor = (address: string) => {
+    const colors = [
+      '#EF4444', '#F97316', '#F59E0B', '#EAB308', 
+      '#84CC16', '#22C55E', '#10B981', '#14B8A6',
+      '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1',
+      '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'
+    ];
+    
+    let hash = 0;
+    for (let i = 0; i < address.length; i++) {
+      hash = address.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -55,9 +75,43 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
       const pixelSize = Math.max(2, viewPort.scale);
       ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
     });
+
+    cursors.forEach((cursor) => {
+      if (cursor.address === address) return;
+      
+      const screenX = (cursor.x - viewPort.x) * viewPort.scale + canvas.width / 2;
+      const screenY = (cursor.y - viewPort.y) * viewPort.scale + canvas.height / 2;
+      
+      if (screenX >= -20 && screenX <= canvas.width + 20 && 
+          screenY >= -20 && screenY <= canvas.height + 20) {
+        
+        const cursorColor = getRandomColor(cursor.address);
+        
+        ctx.fillStyle = cursorColor;
+        ctx.globalAlpha = 0.8;
+        
+        ctx.beginPath();
+        ctx.arc(screenX + 2, screenY + 2, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(screenX + 2, screenY + 2, 2, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.fillStyle = cursorColor;
+        ctx.font = '10px sans-serif';
+        ctx.globalAlpha = 0.9;
+        ctx.fillText(
+          cursor.address.slice(0, 6) + '...',
+          screenX + 8,
+          screenY - 2
+        );
+      }
+    });
     
     ctx.globalAlpha = 1.0; 
-  }, [pixels, viewPort]);
+  }, [pixels, cursors, viewPort, address]);
 
   useEffect(() => {
     draw();
@@ -75,6 +129,35 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
       x: Math.floor(relativeX / viewPort.scale + viewPort.x),
       y: Math.floor(relativeY / viewPort.scale + viewPort.y)
     };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (dragStart) {
+      const deltaX = (e.clientX - dragStart.x) / viewPort.scale;
+      const deltaY = (e.clientY - dragStart.y) / viewPort.scale;
+      setViewPort(viewPort.x - deltaX, viewPort.y - deltaY, viewPort.scale);
+      setDragStart({ x: e.clientX, y: e.clientY });
+    } else if (isConnected && address) {
+      const { x, y } = screenToCanvas(e.clientX, e.clientY);
+      
+      if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
+        updateCursor({
+          address,
+          x,
+          y,
+          timestamp: Date.now()
+        });
+
+        const now = Date.now();
+        const hasPositionChanged = lastCursorPosition.current.x !== x || lastCursorPosition.current.y !== y;
+        
+        if (hasPositionChanged && now - lastBlockchainCursorUpdate.current > CURSOR_BLOCKCHAIN_THROTTLE) {
+          updateCursorOnBlockchain(x, y);
+          lastBlockchainCursorUpdate.current = now;
+          lastCursorPosition.current = { x, y };
+        }
+      }
+    }
   };
 
   const handleClick = async (e: React.MouseEvent) => {
@@ -127,15 +210,6 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 2) {
-      setDragStart({ x: e.clientX, y: e.clientY });
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (dragStart) {
-      const deltaX = (e.clientX - dragStart.x) / viewPort.scale;
-      const deltaY = (e.clientY - dragStart.y) / viewPort.scale;
-      setViewPort(viewPort.x - deltaX, viewPort.y - deltaY, viewPort.scale);
       setDragStart({ x: e.clientX, y: e.clientY });
     }
   };
