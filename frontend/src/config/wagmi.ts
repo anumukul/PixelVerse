@@ -1,27 +1,19 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import { http } from 'viem';
+import { defineChain } from 'viem';
+import deploymentInfo from '../../deployment-info.json';
 
-export const somniaTestnet = {
-  id: 50312,
+export const somniaTestnet = defineChain({
+  id: deploymentInfo.chainId,
   name: 'Somnia Testnet',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'STT',
-    symbol: 'STT',
-  },
-  rpcUrls: {
-    default: { http: ['https://dream-rpc.somnia.network/'] },
-  },
-  blockExplorers: {
-    default: { name: 'Shannon Explorer', url: 'https://shannon-explorer.somnia.network/' },
-  },
-} as const;
+  nativeCurrency: { decimals: 18, name: 'STT', symbol: 'STT' },
+  rpcUrls: { default: { http: ['https://dream-rpc.somnia.network'] } },
+  blockExplorers: { default: { name: 'Shannon', url: 'https://shannon-explorer.somnia.network' } },
+  testnet: true,
+});
 
 export const wagmiConfig = getDefaultConfig({
   appName: 'PixelVerse',
-  projectId: '2f05ae7f1116030fde2d36508f472bfb', // This is a dummy ID to avoid API errors
+  projectId: 'get-your-own-at-walletconnect-cloud',
   chains: [somniaTestnet],
-  transports: {
-    [somniaTestnet.id]: http(),
-  },
+  ssr: false,
 });

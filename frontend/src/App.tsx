@@ -1,131 +1,61 @@
-// frontend/src/App.tsx
-import React, { useState } from 'react';
-import { WagmiProvider } from 'wagmi';
-import { RainbowKitProvider, ConnectButton } from '@rainbow-me/rainbowkit';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useAccount } from 'wagmi';
-
-import { wagmiConfig } from './config/wagmi';
-import { CONTRACT_ADDRESS } from './config/contract';
-
-import { AnalyticsDashboard } from './components/AnalyticsDashboard';
-import { BatchOperations } from './components/BatchOperations';
-import { Header } from './components/Header';
-import { Navigation } from './components/Navigation';
-import { WelcomeBanner } from './components/WelcomeBanner';
-import { StatusBar } from './components/StatusBar';
-import { NotificationSystem } from './components/NotificationSystem';
-
-import '@rainbow-me/rainbowkit/styles.css';
-import './App.css';
-
-const queryClient = new QueryClient();
-
-type ViewMode = 'analytics' | 'batch' | 'split';
-
-function PixelVerseApp() {
-  const [viewMode, setViewMode] = useState<ViewMode>('analytics');
-  const [notifications, setNotifications] = useState<Array<{
-    id: number;
-    message: string;
-    type: 'success' | 'error' | 'info';
-    timestamp: number;
-  }>>([]);
-  
-  const { address, isConnected } = useAccount();
-
-  const addNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const notification = {
-      id: Date.now(),
-      message,
-      type,
-      timestamp: Date.now()
-    };
-    
-    setNotifications(prev => [...prev, notification]);
-    
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== notification.id));
-    }, 5000);
-  };
-
-  const removeNotification = (id: number) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const handleBatchComplete = (pixels: any[]) => {
-    addNotification(`Successfully painted ${pixels.length} pixels in batch!`, 'success');
-  };
-
-  const renderContent = () => {
-    switch (viewMode) {
-      case 'analytics':
-        return <AnalyticsDashboard className="full-width" />;
-      
-      case 'batch':
-        return <BatchOperations onBatchComplete={handleBatchComplete} className="full-width" />;
-      
-      case 'split':
-        return (
-          <div className="split-layout">
-            <div className="split-left">
-              <div className="section">
-                <h3 className="section-title">Batch Tools</h3>
-                <BatchOperations onBatchComplete={handleBatchComplete} />
-              </div>
-            </div>
-            
-            <div className="split-right">
-              <div className="section">
-                <h3 className="section-title">Real-Time Analytics</h3>
-                <AnalyticsDashboard />
-              </div>
-            </div>
-          </div>
-        );
-      
-      default:
-        return <AnalyticsDashboard className="full-width" />;
-    }
-  };
-
-  return (
-    <div className="app">
-      <Header contractAddress={CONTRACT_ADDRESS} />
-      
-      <div className="connect-section">
-        <ConnectButton />
-      </div>
-
-      <StatusBar />
-
-      <Navigation viewMode={viewMode} onViewModeChange={setViewMode} />
-
-      <main className="main-content">
-        {!isConnected && <WelcomeBanner />}
-        
-        <div className="content-wrapper">
-          {renderContent()}
-        </div>
-      </main>
-
-      <NotificationSystem 
-        notifications={notifications}
-        onRemove={removeNotification}
-      />
-    </div>
-  );
-}
+import React from 'react';
 
 function App() {
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>
-          <PixelVerseApp />
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">PixelVerse</h1>
+              <p className="text-gray-600 mt-1">Collaborative NFT Canvas on Somnia</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-500">Not Connected</span>
+              <div className="w-2 h-2 rounded-full bg-red-500" />
+            </div>
+          </div>
+        </div>
+      </header>
+      
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+              <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                <div className="text-center">
+                  <h2 className="text-xl font-semibold text-gray-700 mb-2">Canvas Loading...</h2>
+                  <p className="text-gray-500">Setting up PixelVerse components...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+              <h3 className="font-semibold text-gray-800 mb-3">Wallet</h3>
+              <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Connect Wallet
+              </button>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+              <h3 className="font-semibold text-gray-800 mb-3">Canvas Stats</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Canvas Size</span>
+                  <span className="font-mono">1000×1000</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Pixels Painted</span>
+                  <span className="font-mono">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
 

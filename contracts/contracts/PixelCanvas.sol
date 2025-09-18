@@ -3,8 +3,9 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract PixelCanvasV2 is ERC721, Ownable {
+contract PixelCanvas is ERC721, Ownable, ReentrancyGuard {
     struct Pixel {
         uint16 x;
         uint16 y;
@@ -23,15 +24,6 @@ contract PixelCanvasV2 is ERC721, Ownable {
     uint16 public constant CANVAS_WIDTH = 1000;
     uint16 public constant CANVAS_HEIGHT = 1000;
     uint256 public totalPixelsPainted = 0;
-
-    // Simple reentrancy guard
-    bool private _locked = false;
-    modifier noReentrancy() {
-        require(!_locked, "Reentrant call");
-        _locked = true;
-        _;
-        _locked = false;
-    }
 
     event PixelPainted(
         uint256 indexed tokenId,
@@ -54,13 +46,13 @@ contract PixelCanvasV2 is ERC721, Ownable {
         uint16 y,
         uint32 timestamp
     );
-    event RegionUpdated(
-        uint16 startX,
-        uint16 startY,
-        uint16 width,
-        uint16 height,
-        uint32 timestamp
-    );
+
+    error InvalidCoordinates();
+    error InsufficientPayment();
+    error ArrayLengthMismatch();
+    error BatchTooLarge();
+    error RegionTooLarge();
+    error PixelNotFound();
 
     constructor() ERC721("PixelCanvasV2", "PIXV2") {}
 
@@ -68,12 +60,10 @@ contract PixelCanvasV2 is ERC721, Ownable {
         uint16 x,
         uint16 y,
         uint32 color
-    ) external payable noReentrancy {
-        require(
-            x < CANVAS_WIDTH && y < CANVAS_HEIGHT,
-            "Coordinates out of bounds"
-        );
-        require(msg.value >= pixelPrice, "Insufficient payment");
+    ) external payable nonReentrant {
+        if (x >= CANVAS_WIDTH || y >= CANVAS_HEIGHT)
+            revert InvalidCoordinates();
+        if (msg.value < pixelPrice) revert InsufficientPayment();
 
         uint256 tokenId = _paintPixelInternal(x, y, color);
 
@@ -96,33 +86,26 @@ contract PixelCanvasV2 is ERC721, Ownable {
         uint16[] calldata xCoords,
         uint16[] calldata yCoords,
         uint32[] calldata colors
-    ) external payable noReentrancy {
-        require(
-            xCoords.length == yCoords.length && yCoords.length == colors.length,
-            "Array length mismatch"
-        );
-        require(xCoords.length <= 50, "Batch too large");
-        require(
-            msg.value >= pixelPrice * xCoords.length,
-            "Insufficient payment"
-        );
+    ) external payable nonReentrant {
+        if (
+            xCoords.length != yCoords.length || yCoords.length != colors.length
+        ) {
+            revert ArrayLengthMismatch();
+        }
+        if (xCoords.length > 50) revert BatchTooLarge();
+        if (msg.value < pixelPrice * xCoords.length)
+            revert InsufficientPayment();
 
         uint256[] memory tokenIds = new uint256[](xCoords.length);
 
         for (uint256 i = 0; i < xCoords.length; i++) {
+            if (xCoords[i] >= CANVAS_WIDTH || yCoords[i] >= CANVAS_HEIGHT) {
+                revert InvalidCoordinates();
+            }
             tokenIds[i] = _paintPixelInternal(
                 xCoords[i],
                 yCoords[i],
                 colors[i]
-            );
-            emit PixelPainted(
-                tokenIds[i],
-                msg.sender,
-                xCoords[i],
-                yCoords[i],
-                colors[i],
-                uint32(block.timestamp),
-                pixels[tokenIds[i]].version
             );
         }
 
@@ -181,10 +164,8 @@ contract PixelCanvasV2 is ERC721, Ownable {
     }
 
     function updateCursor(uint16 x, uint16 y) external {
-        require(
-            x < CANVAS_WIDTH && y < CANVAS_HEIGHT,
-            "Coordinates out of bounds"
-        );
+        if (x >= CANVAS_WIDTH || y >= CANVAS_HEIGHT)
+            revert InvalidCoordinates();
         emit UserCursorMoved(msg.sender, x, y, uint32(block.timestamp));
     }
 
@@ -194,7 +175,7 @@ contract PixelCanvasV2 is ERC721, Ownable {
     ) external view returns (Pixel memory) {
         bytes32 coordHash = keccak256(abi.encodePacked(x, y));
         uint256 tokenId = coordinateToTokenId[coordHash];
-        require(tokenId != 0, "No pixel at coordinates");
+        if (tokenId == 0) revert PixelNotFound();
         return pixels[tokenId];
     }
 
@@ -204,12 +185,10 @@ contract PixelCanvasV2 is ERC721, Ownable {
         uint16 width,
         uint16 height
     ) external view returns (Pixel[] memory regionPixels) {
-        require(startX + width <= CANVAS_WIDTH, "Region exceeds canvas width");
-        require(
-            startY + height <= CANVAS_HEIGHT,
-            "Region exceeds canvas height"
-        );
-        require(width <= 100 && height <= 100, "Region too large");
+        if (startX + width > CANVAS_WIDTH || startY + height > CANVAS_HEIGHT) {
+            revert InvalidCoordinates();
+        }
+        if (width > 100 || height > 100) revert RegionTooLarge();
 
         uint256 maxPixels = uint256(width) * uint256(height);
         Pixel[] memory tempPixels = new Pixel[](maxPixels);
@@ -230,8 +209,31 @@ contract PixelCanvasV2 is ERC721, Ownable {
         for (uint256 i = 0; i < pixelCount; i++) {
             regionPixels[i] = tempPixels[i];
         }
+    }
 
-        // Removed emit RegionUpdated - can't emit events in view functions
+    function getMultiplePixels(
+        uint16[] calldata xCoords,
+        uint16[] calldata yCoords
+    )
+        external
+        view
+        returns (Pixel[] memory resultPixels, bool[] memory exists)
+    {
+        if (xCoords.length != yCoords.length) revert ArrayLengthMismatch();
+
+        resultPixels = new Pixel[](xCoords.length);
+        exists = new bool[](xCoords.length);
+
+        for (uint256 i = 0; i < xCoords.length; i++) {
+            bytes32 coordHash = keccak256(
+                abi.encodePacked(xCoords[i], yCoords[i])
+            );
+            uint256 tokenId = coordinateToTokenId[coordHash];
+            if (tokenId != 0) {
+                resultPixels[i] = pixels[tokenId];
+                exists[i] = true;
+            }
+        }
     }
 
     function getUserPixels(
@@ -277,5 +279,16 @@ contract PixelCanvasV2 is ERC721, Ownable {
 
     function withdraw() external onlyOwner {
         payable(owner()).transfer(address(this).balance);
+    }
+
+    bool public paused = false;
+
+    modifier whenNotPaused() {
+        require(!paused, "Contract is paused");
+        _;
+    }
+
+    function setPaused(bool _paused) external onlyOwner {
+        paused = _paused;
     }
 }

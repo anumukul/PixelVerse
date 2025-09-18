@@ -1,21 +1,27 @@
 {
-  "name": "contracts",
+  "name": "pixelcanvas-contracts",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "PixelCanvas smart contract deployment",
+  "main": "hardhat.config.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:testnet": "hardhat run scripts/deploy.js --network somnia_testnet",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network somnia_mainnet",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "verify:testnet": "hardhat verify --network somnia_testnet",
+    "verify:mainnet": "hardhat verify --network somnia_mainnet",
+    "node": "hardhat node",
+    "clean": "hardhat clean"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
-    "@nomicfoundation/hardhat-toolbox-viem": "^4.1.0",
-    "hardhat": "^2.26.3"
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/contracts": "^4.9.0",
+    "dotenv": "^16.3.1",
+    "hardhat": "^2.19.0"
   },
-  "dependencies": {
-    "@openzeppelin/contracts": "^4.9.3",
-    "dotenv": "^17.2.2"
-  }
+  "keywords": ["solidity", "ethereum", "nft", "canvas", "somnia"],
+  "author": "Your Name",
+  "license": "MIT"
 }
