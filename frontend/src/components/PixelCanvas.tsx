@@ -5,67 +5,62 @@ import { useWalletStore } from '../stores/walletStore';
 
 const CANVAS_SIZE = 1000;
 
-export const PixelCanvas: React.FC = () => {
+interface PixelCanvasProps {
+  onTransactionStart: (hash: string) => void;
+  onTransactionUpdate: (hash: string, status: 'confirmed' | 'failed') => void;
+}
+
+export const PixelCanvas: React.FC<PixelCanvasProps> = ({ 
+  onTransactionStart, 
+  onTransactionUpdate 
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { 
     pixels, 
-    cursors, 
     selectedColor, 
     viewPort, 
     dragStart,
     setDragStart,
     setViewPort,
-    getPixelAt 
+    addPendingPixel,
+    removePendingPixel
   } = useCanvasStore();
   const { paintPixel } = useWalletStore();
   const { address, isConnected } = useAccount();
   const { writeContract } = useWriteContract();
-const draw = useCallback(() => {
-  const canvas = canvasRef.current;
-  if (!canvas) return;
 
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#f8f9fa';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-  
-  pixels.forEach((pixel) => {
-    ctx.fillStyle = pixel.color;
-    const screenX = (pixel.x - viewPort.x) * viewPort.scale + canvas.width / 2;
-    const screenY = (pixel.y - viewPort.y) * viewPort.scale + canvas.height / 2;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#f8f9fa';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    pixels.forEach((pixel) => {
+      if (pixel.painter === 'pending') {
+        ctx.globalAlpha = 0.5; 
+      } else {
+        ctx.globalAlpha = 1.0;
+      }
+      
+      ctx.fillStyle = pixel.color;
+      const screenX = (pixel.x - viewPort.x) * viewPort.scale + canvas.width / 2;
+      const screenY = (pixel.y - viewPort.y) * viewPort.scale + canvas.height / 2;
+      
+      const pixelSize = Math.max(2, viewPort.scale);
+      ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
+    });
     
-    
-    const pixelSize = Math.max(2, viewPort.scale);
-    ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
-    
-    console.log('Drawing pixel at screen coords:', { screenX, screenY, pixel }); 
-  });
-}, [pixels, viewPort]);
-
-
-
+    ctx.globalAlpha = 1.0; 
+  }, [pixels, viewPort]);
 
   useEffect(() => {
     draw();
   }, [draw]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const scaleChange = e.deltaY > 0 ? 0.9 : 1.1;
-      const newScale = Math.max(0.1, Math.min(10, viewPort.scale * scaleChange));
-      setViewPort(viewPort.x, viewPort.y, newScale);
-    };
-
-    canvas.addEventListener('wheel', handleWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', handleWheel);
-  }, [viewPort, setViewPort]);
 
   const screenToCanvas = (screenX: number, screenY: number) => {
     const canvas = canvasRef.current;
@@ -81,20 +76,40 @@ const draw = useCallback(() => {
     };
   };
 
-const handleClick = async (e: React.MouseEvent) => {
-  if (!isConnected) return;
-  
-  const { x, y } = screenToCanvas(e.clientX, e.clientY);
-  console.log('Canvas click at:', { x, y }); 
-  
-  if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
-    try {
-      await paintPixel(x, y, selectedColor, writeContract);
-    } catch (error) {
-      console.error('Paint failed:', error);
+  const handleClick = async (e: React.MouseEvent) => {
+    if (!isConnected) return;
+    
+    const { x, y } = screenToCanvas(e.clientX, e.clientY);
+    
+    if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
+      try {
+        addPendingPixel(x, y, selectedColor);
+        
+        const hash = await paintPixel(x, y, selectedColor, writeContract);
+        if (hash && typeof hash === 'string') {
+          onTransactionStart(hash);
+        }
+      } catch (error) {
+        console.error('Paint failed:', error);
+        removePendingPixel(x, y);
+      }
     }
-  }
-};
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const scaleChange = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.max(0.1, Math.min(10, viewPort.scale * scaleChange));
+      setViewPort(viewPort.x, viewPort.y, newScale);
+    };
+
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, [viewPort, setViewPort]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 2) {

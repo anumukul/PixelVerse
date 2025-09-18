@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Pixel, UserCursor, CanvasState } from '../types';
+import type { Pixel, UserCursor, CanvasState } from '../types/index';
 
 interface CanvasStore extends CanvasState {
   setPixel: (pixel: Pixel) => void;
@@ -11,22 +11,70 @@ interface CanvasStore extends CanvasState {
   getPixelKey: (x: number, y: number) => string;
   getPixelAt: (x: number, y: number) => Pixel | undefined;
   clearCursors: () => void;
+  addPendingPixel: (x: number, y: number, color: string) => void;
+  removePendingPixel: (x: number, y: number) => void;
 }
 
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
   pixels: new Map(),
   cursors: new Map(),
   selectedColor: '#FF0000',
-  viewPort: { x: 500, y: 500, scale: 1 },
+  viewPort: { x: 500, y: 500, scale: 4 },
   isLoading: false,
   dragStart: null,
 
-  setPixel: (pixel) => set((state) => {
-    const key = get().getPixelKey(pixel.x, pixel.y);
-    const newPixels = new Map(state.pixels);
-    newPixels.set(key, pixel);
-    return { pixels: newPixels };
-  }),
+  setPixel: (pixel) => {
+    const current = get();
+    const key = current.getPixelKey(pixel.x, pixel.y);
+    const existing = current.pixels.get(key);
+    
+    // Skip if identical pixel already exists
+    if (existing && 
+        existing.x === pixel.x && 
+        existing.y === pixel.y && 
+        existing.color === pixel.color && 
+        existing.version === pixel.version) {
+      return;
+    }
+    
+    set((state) => {
+      const newPixels = new Map(state.pixels);
+      newPixels.set(key, pixel);
+      return { pixels: newPixels };
+    });
+  },
+
+  addPendingPixel: (x, y, color) => {
+    const current = get();
+    const key = current.getPixelKey(x, y);
+    
+    set((state) => {
+      const newPixels = new Map(state.pixels);
+      newPixels.set(key, {
+        x,
+        y,
+        color,
+        painter: 'pending',
+        timestamp: Date.now(),
+        version: 0
+      });
+      return { pixels: newPixels };
+    });
+  },
+
+  removePendingPixel: (x, y) => {
+    const current = get();
+    const key = current.getPixelKey(x, y);
+    
+    set((state) => {
+      const newPixels = new Map(state.pixels);
+      const existing = newPixels.get(key);
+      if (existing && existing.painter === 'pending') {
+        newPixels.delete(key);
+      }
+      return { pixels: newPixels };
+    });
+  },
 
   updateCursor: (cursor) => set((state) => {
     const newCursors = new Map(state.cursors);

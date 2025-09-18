@@ -1,21 +1,49 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { WalletConnect } from './components/WalletConnect';
 import { ColorPalette } from './components/ColorPalette';
 import { CanvasControls } from './components/CanvasControls';
 import { PixelCanvas } from './components/PixelCanvas';
 import { LiveStats } from './components/LiveStats';
+import { TransactionToast } from './components/TransactionToast';
 import { useContractEvents } from './hooks/useContractEvents';
+
+interface Transaction {
+  hash: string;
+  status: 'pending' | 'confirmed' | 'failed';
+  type: 'paint';
+  timestamp: number;
+}
 
 function App() {
   const { isConnected } = useAccount();
   const { loadCanvasRegion } = useContractEvents();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   useEffect(() => {
     if (isConnected) {
       loadCanvasRegion(450, 450, 100, 100);
     }
   }, [isConnected, loadCanvasRegion]);
+
+  const addTransaction = (hash: string) => {
+    setTransactions(prev => [...prev, {
+      hash,
+      status: 'pending',
+      type: 'paint',
+      timestamp: Date.now()
+    }]);
+  };
+
+  const updateTransactionStatus = (hash: string, status: 'confirmed' | 'failed') => {
+    setTransactions(prev => 
+      prev.map(tx => tx.hash === hash ? { ...tx, status } : tx)
+    );
+  };
+
+  const removeTransaction = (hash: string) => {
+    setTransactions(prev => prev.filter(tx => tx.hash !== hash));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -41,7 +69,10 @@ function App() {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
               <div className="flex justify-center">
-                <PixelCanvas />
+                <PixelCanvas 
+                  onTransactionStart={addTransaction}
+                  onTransactionUpdate={updateTransactionStatus}
+                />
               </div>
             </div>
           </div>
@@ -78,6 +109,11 @@ function App() {
           </div>
         )}
       </main>
+
+      <TransactionToast 
+        transactions={transactions}
+        onRemove={removeTransaction}
+      />
     </div>
   );
 }
