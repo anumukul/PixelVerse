@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Pixel, UserCursor, CanvasState } from '../types';
+import type { Pixel, UserCursor, CanvasState } from '../types';
 
 interface CanvasStore extends CanvasState {
   setPixel: (pixel: Pixel) => void;

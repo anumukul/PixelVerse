@@ -1,6 +1,8 @@
 import React from 'react';
 import { useAccount } from 'wagmi';
 import { WalletConnect } from './components/WalletConnect';
+import { ColorPalette } from './components/ColorPalette';
+import { CanvasControls } from './components/CanvasControls';
 
 function App() {
   const { isConnected } = useAccount();
@@ -31,7 +33,7 @@ function App() {
               <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                 <div className="text-center">
                   <h2 className="text-xl font-semibold text-gray-700 mb-2">Canvas Loading...</h2>
-                  <p className="text-gray-500">Setting up PixelVerse components...</p>
+                  <p className="text-gray-500">PixelCanvas component coming next...</p>
                 </div>
               </div>
             </div>
@@ -40,21 +42,33 @@ function App() {
           <div className="space-y-6">
             <WalletConnect />
             
-            <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
-              <h3 className="font-semibold text-gray-800 mb-3">Canvas Stats</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Canvas Size</span>
-                  <span className="font-mono">1000×1000</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Pixels Painted</span>
-                  <span className="font-mono">0</span>
-                </div>
-              </div>
-            </div>
+            {isConnected && (
+              <>
+                <ColorPalette />
+                <CanvasControls />
+              </>
+            )}
           </div>
         </div>
+
+        {!isConnected && (
+          <div className="mt-8 text-center">
+            <div className="bg-blue-50 rounded-xl p-8 max-w-md mx-auto border border-blue-200">
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                Welcome to PixelVerse
+              </h3>
+              <p className="text-blue-700 mb-4">
+                Connect your wallet to start painting pixels and creating NFTs on the Somnia blockchain.
+              </p>
+              <ul className="text-sm text-blue-600 space-y-1 text-left">
+                <li>• Each pixel becomes an NFT</li>
+                <li>• Real-time collaborative canvas</li>
+                <li>• High-speed Somnia blockchain</li>
+                <li>• Batch painting support</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
