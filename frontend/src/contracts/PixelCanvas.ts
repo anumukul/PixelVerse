@@ -1,4 +1,6 @@
-"abi": [
+
+
+export const PixelCanvasABI= [
     {
       "inputs": [],
       "stateMutability": "nonpayable",
@@ -1011,4 +1013,5 @@
       "stateMutability": "nonpayable",
       "type": "function"
     }
-  ],
+  ] as const;
+

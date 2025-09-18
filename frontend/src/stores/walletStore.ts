@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { parseEther } from 'viem';
 import deploymentInfo from '../../deployment-info.json';
-import contractABI from '../contracts/PixelCanvas.json';
+import { PixelCanvasABI } from '../contracts/PixelCanvas';
 
 interface WalletStore {
   paintPixel: (x: number, y: number, color: string, writeContract: any) => Promise<string>;
@@ -17,7 +17,7 @@ export const useWalletStore = create<WalletStore>(() => ({
     
     const hash = await writeContract({
       address: deploymentInfo.contractAddress as `0x${string}`,
-      abi: contractABI.abi,
+      abi: PixelCanvasABI,
       functionName: 'paintPixel',
       args: [x, y, colorValue],
       value: parseEther('0.001')

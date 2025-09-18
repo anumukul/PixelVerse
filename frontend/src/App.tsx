@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi';
 import { WalletConnect } from './components/WalletConnect';
 import { ColorPalette } from './components/ColorPalette';
 import { CanvasControls } from './components/CanvasControls';
+import { PixelCanvas } from './components/PixelCanvas';
 
 function App() {
   const { isConnected } = useAccount();
@@ -30,11 +31,8 @@ function App() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-              <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                <div className="text-center">
-                  <h2 className="text-xl font-semibold text-gray-700 mb-2">Canvas Loading...</h2>
-                  <p className="text-gray-500">PixelCanvas component coming next...</p>
-                </div>
+              <div className="flex justify-center">
+                <PixelCanvas />
               </div>
             </div>
           </div>
