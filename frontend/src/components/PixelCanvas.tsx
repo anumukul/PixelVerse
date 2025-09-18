@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
 import { useCanvasStore } from '../stores/canvasStore';
 import { useWalletStore } from '../stores/walletStore';
+import { PixelTooltip } from './PixelTooltip';
 
 const CANVAS_SIZE = 1000;
 const CURSOR_BLOCKCHAIN_THROTTLE = 3000;
@@ -16,6 +17,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
   onTransactionUpdate 
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { 
     pixels, 
     cursors,
@@ -24,6 +26,9 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     dragStart,
     batchMode,
     selection,
+    hoveredPixel,
+    tooltipPosition,
+    showTooltip,
     setDragStart,
     setViewPort,
     addPendingPixel,
@@ -31,7 +36,10 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     updateCursor,
     startSelection,
     updateSelection,
-    endSelection
+    endSelection,
+    setHoveredPixel,
+    hideTooltip,
+    getPixelAt
   } = useCanvasStore();
   const { paintPixel, updateCursorOnBlockchain } = useWalletStore();
   const { address, isConnected } = useAccount();
@@ -79,6 +87,13 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
       
       const pixelSize = Math.max(2, viewPort.scale);
       ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
+
+      if (hoveredPixel && pixel.x === hoveredPixel.x && pixel.y === hoveredPixel.y) {
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.8;
+        ctx.strokeRect(screenX - 1, screenY - 1, pixelSize + 2, pixelSize + 2);
+      }
     });
 
     if (batchMode && selection) {
@@ -137,7 +152,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     });
     
     ctx.globalAlpha = 1.0; 
-  }, [pixels, cursors, viewPort, address, batchMode, selection, selectedColor]);
+  }, [pixels, cursors, viewPort, address, batchMode, selection, selectedColor, hoveredPixel]);
 
   useEffect(() => {
     draw();
@@ -163,11 +178,13 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
       const deltaY = (e.clientY - dragStart.y) / viewPort.scale;
       setViewPort(viewPort.x - deltaX, viewPort.y - deltaY, viewPort.scale);
       setDragStart({ x: e.clientX, y: e.clientY });
+      hideTooltip();
     } else if (batchMode && selection?.isSelecting) {
       const { x, y } = screenToCanvas(e.clientX, e.clientY);
       if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
         updateSelection(x, y);
       }
+      hideTooltip();
     } else if (isConnected && address) {
       const { x, y } = screenToCanvas(e.clientX, e.clientY);
       
@@ -179,6 +196,20 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
           timestamp: Date.now()
         });
 
+        const existingPixel = getPixelAt(x, y);
+        if (existingPixel && !batchMode) {
+          const canvas = canvasRef.current;
+          const rect = canvas?.getBoundingClientRect();
+          if (rect) {
+            setHoveredPixel(existingPixel, {
+              x: e.clientX - rect.left,
+              y: e.clientY - rect.top
+            });
+          }
+        } else {
+          hideTooltip();
+        }
+
         const now = Date.now();
         const hasPositionChanged = lastCursorPosition.current.x !== x || lastCursorPosition.current.y !== y;
         
@@ -187,8 +218,15 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
           lastBlockchainCursorUpdate.current = now;
           lastCursorPosition.current = { x, y };
         }
+      } else {
+        hideTooltip();
       }
     }
+  };
+
+  const handleMouseLeave = () => {
+    hideTooltip();
+    setDragStart(null);
   };
 
   const handleClick = async (e: React.MouseEvent) => {
@@ -224,6 +262,8 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
         removePendingPixel(x, y);
       }
     }
+
+    hideTooltip();
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -231,10 +271,12 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     
     if (e.button === 2 && !batchMode) {
       setDragStart({ x: e.clientX, y: e.clientY });
+      hideTooltip();
     } else if (batchMode && e.button === 0) {
       if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
         startSelection(x, y);
       }
+      hideTooltip();
     }
   };
 
@@ -255,11 +297,12 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
       const scaleChange = e.deltaY > 0 ? 0.9 : 1.1;
       const newScale = Math.max(0.1, Math.min(10, viewPort.scale * scaleChange));
       setViewPort(viewPort.x, viewPort.y, newScale);
+      hideTooltip();
     };
 
     canvas.addEventListener('wheel', handleWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', handleWheel);
-  }, [viewPort, setViewPort]);
+  }, [viewPort, setViewPort, hideTooltip]);
 
   useEffect(() => {
     const cleanup = () => {
@@ -288,17 +331,25 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
   const cursorClass = batchMode ? 'cursor-crosshair' : 'cursor-crosshair';
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={800}
-      height={600}
-      className={`border border-gray-300 select-none ${cursorClass}`}
-      onClick={handleClick}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onContextMenu={e => e.preventDefault()}
-    />
+    <div ref={containerRef} className="relative">
+      <canvas
+        ref={canvasRef}
+        width={800}
+        height={600}
+        className={`border border-gray-300 select-none ${cursorClass}`}
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onContextMenu={e => e.preventDefault()}
+      />
+      
+      <PixelTooltip 
+        pixel={hoveredPixel}
+        position={tooltipPosition}
+        visible={showTooltip}
+      />
+    </div>
   );
 };

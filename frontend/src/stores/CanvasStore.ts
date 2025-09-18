@@ -12,6 +12,9 @@ interface BatchSelection {
 interface CanvasStore extends CanvasState {
   batchMode: boolean;
   selection: BatchSelection | null;
+  hoveredPixel: Pixel | null;
+  tooltipPosition: { x: number; y: number };
+  showTooltip: boolean;
   
   setPixel: (pixel: Pixel) => void;
   updateCursor: (cursor: UserCursor) => void;
@@ -33,6 +36,9 @@ interface CanvasStore extends CanvasState {
   clearSelection: () => void;
   getSelectedPixels: () => Array<{x: number, y: number}>;
   getSelectionCost: () => number;
+  
+  setHoveredPixel: (pixel: Pixel | null, position?: { x: number; y: number }) => void;
+  hideTooltip: () => void;
 }
 
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
@@ -44,6 +50,9 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   dragStart: null,
   batchMode: false,
   selection: null,
+  hoveredPixel: null,
+  tooltipPosition: { x: 0, y: 0 },
+  showTooltip: false,
 
   setPixel: (pixel) => {
     const current = get();
@@ -207,6 +216,21 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   getSelectionCost: () => {
     const pixels = get().getSelectedPixels();
     return pixels.length * 0.001;
+  },
+
+  setHoveredPixel: (pixel, position = { x: 0, y: 0 }) => {
+    set({
+      hoveredPixel: pixel,
+      tooltipPosition: position,
+      showTooltip: !!pixel
+    });
+  },
+
+  hideTooltip: () => {
+    set({
+      hoveredPixel: null,
+      showTooltip: false
+    });
   },
 
   setSelectedColor: (color) => set({ selectedColor: color }),

@@ -7,6 +7,7 @@ import { PixelCanvas } from './components/PixelCanvas';
 import { LiveStats } from './components/LiveStats';
 import { TransactionToast } from './components/TransactionToast';
 import { BatchPaintControls } from './components/BatchPaintControls';
+import { CanvasExportControls } from './components/CanvasExportControls';
 import { useContractEvents } from './hooks/useContractEvents';
 
 interface Transaction {
@@ -88,6 +89,7 @@ function App() {
                   onTransactionStart={addTransaction}
                 />
                 <CanvasControls />
+                <CanvasExportControls />
                 <LiveStats />
               </>
             )}

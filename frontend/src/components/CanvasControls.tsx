@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCanvasStore } from '../stores/canvasStore';
 import { useContractEvents } from '../hooks/useContractEvents';
 
 export const CanvasControls: React.FC = () => {
-  const { viewPort, setViewPort } = useCanvasStore();
+  const { viewPort, pixels, setViewPort } = useCanvasStore();
   const { refreshCanvas } = useContractEvents();
+  const [jumpCoords, setJumpCoords] = useState({ x: '', y: '' });
 
   const zoomIn = () => {
     const newScale = Math.min(10, viewPort.scale * 1.2);
@@ -24,11 +25,49 @@ export const CanvasControls: React.FC = () => {
     setViewPort(500, 500, viewPort.scale);
   };
 
+  const fitToContent = () => {
+    const validPixels = Array.from(pixels.values()).filter(p => p.painter !== 'pending');
+    
+    if (validPixels.length === 0) {
+      centerView();
+      return;
+    }
+
+    let minX = 1000, maxX = 0, minY = 1000, maxY = 0;
+    validPixels.forEach(pixel => {
+      minX = Math.min(minX, pixel.x);
+      maxX = Math.max(maxX, pixel.x);
+      minY = Math.min(minY, pixel.y);
+      maxY = Math.max(maxY, pixel.y);
+    });
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const width = maxX - minX + 20;
+    const height = maxY - minY + 20;
+    const scale = Math.min(800 / width, 600 / height, 5);
+
+    setViewPort(centerX, centerY, Math.max(0.5, scale));
+  };
+
+  const jumpToCoordinate = () => {
+    const x = parseInt(jumpCoords.x);
+    const y = parseInt(jumpCoords.y);
+    
+    if (isNaN(x) || isNaN(y) || x < 0 || x >= 1000 || y < 0 || y >= 1000) {
+      alert('Please enter valid coordinates (0-999)');
+      return;
+    }
+    
+    setViewPort(x, y, Math.max(2, viewPort.scale));
+    setJumpCoords({ x: '', y: '' });
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
       <h3 className="font-semibold text-gray-800 mb-3">Controls</h3>
       
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="flex gap-2">
           <button
             onClick={zoomIn}
@@ -44,12 +83,20 @@ export const CanvasControls: React.FC = () => {
           </button>
         </div>
         
-        <button
-          onClick={centerView}
-          className="w-full px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm transition-colors"
-        >
-          Center
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={centerView}
+            className="flex-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm transition-colors"
+          >
+            Center
+          </button>
+          <button
+            onClick={fitToContent}
+            className="flex-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm transition-colors"
+          >
+            Fit Art
+          </button>
+        </div>
         
         <button
           onClick={resetView}
@@ -64,17 +111,50 @@ export const CanvasControls: React.FC = () => {
         >
           Refresh Canvas
         </button>
+
+        <div className="border-t pt-3">
+          <div className="text-xs text-gray-600 mb-2">Jump to Coordinate</div>
+          <div className="flex gap-2 mb-2">
+            <input
+              type="number"
+              placeholder="X (0-999)"
+              value={jumpCoords.x}
+              onChange={(e) => setJumpCoords({ ...jumpCoords, x: e.target.value })}
+              className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+              min="0"
+              max="999"
+            />
+            <input
+              type="number"
+              placeholder="Y (0-999)"
+              value={jumpCoords.y}
+              onChange={(e) => setJumpCoords({ ...jumpCoords, y: e.target.value })}
+              className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+              min="0"
+              max="999"
+            />
+          </div>
+          <button
+            onClick={jumpToCoordinate}
+            disabled={!jumpCoords.x || !jumpCoords.y}
+            className="w-full px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed rounded text-xs transition-colors"
+          >
+            Jump
+          </button>
+        </div>
       </div>
 
       <div className="mt-3 p-2 bg-gray-50 rounded text-xs space-y-1">
         <div>Zoom: {(viewPort.scale * 100).toFixed(0)}%</div>
-        <div>Position: {viewPort.x}, {viewPort.y}</div>
+        <div>Position: {Math.round(viewPort.x)}, {Math.round(viewPort.y)}</div>
+        <div>Pixels: {Array.from(pixels.values()).filter(p => p.painter !== 'pending').length}</div>
       </div>
 
       <div className="mt-3 text-xs text-gray-500">
         <div>Left click: Paint pixel</div>
         <div>Right drag: Pan canvas</div>
         <div>Scroll: Zoom in/out</div>
+        <div>Hover: View pixel info</div>
       </div>
     </div>
   );
