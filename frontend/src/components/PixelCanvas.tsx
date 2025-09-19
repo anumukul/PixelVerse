@@ -223,7 +223,8 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     }
 
     // Draw pixels
-    pixels.forEach((pixel: Pixel) => {
+    const pixelsArray = Array.from(pixels.values());
+    pixelsArray.forEach((pixel: Pixel) => {
       if (pixel.painter === 'pending') {
         ctx.globalAlpha = 0.5; 
       } else {
@@ -279,7 +280,8 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     }
 
     // User cursors
-    cursors.forEach((cursor: UserCursor) => {
+    const cursorsArray = Array.from(cursors.values());
+    cursorsArray.forEach((cursor: UserCursor) => {
       if (cursor.address === address) return;
       
       const screenX = (cursor.x - viewPort.x) * viewPort.scale + canvas.width / 2;

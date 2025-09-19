@@ -1,3 +1,5 @@
+
+
 import { create } from 'zustand';
 import type { Pixel, UserCursor, CanvasState } from '../types/index';
 
@@ -56,7 +58,7 @@ interface CanvasStore extends CanvasState {
 }
 
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
-pixels: new Map<string, Pixel>(),
+  pixels: new Map<string, Pixel>(),
   cursors: new Map<string, UserCursor>(),
   selectedColor: '#FF0000',
   viewPort: { x: 500, y: 500, scale: 4 },

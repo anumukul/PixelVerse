@@ -16,7 +16,8 @@ export const CanvasExportControls: React.FC = () => {
     ctx.fillStyle = '#f8f9fa';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    pixels.forEach((pixel: Pixel) => {
+    const pixelsArray = Array.from(pixels.values());
+    pixelsArray.forEach((pixel: Pixel) => {
       if (pixel.painter === 'pending') return;
       
       const screenX = (pixel.x - viewPort.x) * viewPort.scale + canvas.width / 2;
@@ -41,14 +42,15 @@ export const CanvasExportControls: React.FC = () => {
       return;
     }
 
-    let minX = 1000, maxX = 0, minY = 1000, maxY = 0;
-    const validPixels = Array.from(pixels.values()).filter((p: Pixel) => p.painter !== 'pending');
+    const pixelsArray = Array.from(pixels.values());
+    const validPixels = pixelsArray.filter((p: Pixel) => p.painter !== 'pending');
     
     if (validPixels.length === 0) {
       alert('No valid pixels to export!');
       return;
     }
 
+    let minX = 1000, maxX = 0, minY = 1000, maxY = 0;
     validPixels.forEach((pixel: Pixel) => {
       minX = Math.min(minX, pixel.x);
       maxX = Math.max(maxX, pixel.x);
@@ -87,7 +89,8 @@ export const CanvasExportControls: React.FC = () => {
   };
 
   const exportStats = () => {
-    const validPixels = Array.from(pixels.values()).filter((p: Pixel) => p.painter !== 'pending');
+    const pixelsArray = Array.from(pixels.values());
+    const validPixels = pixelsArray.filter((p: Pixel) => p.painter !== 'pending');
     const painters = new Set(validPixels.map((p: Pixel) => p.painter));
     const colors = new Set(validPixels.map((p: Pixel) => p.color));
 

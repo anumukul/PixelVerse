@@ -27,7 +27,8 @@ export const CanvasControls: React.FC = () => {
   };
 
   const fitToContent = () => {
-    const validPixels = Array.from(pixels.values()).filter((p: Pixel) => p.painter !== 'pending');
+    const pixelsArray = Array.from(pixels.values());
+    const validPixels = pixelsArray.filter((p: Pixel) => p.painter !== 'pending');
     
     if (validPixels.length === 0) {
       centerView();
@@ -67,6 +68,9 @@ export const CanvasControls: React.FC = () => {
   const toggleGrid = () => {
     setShowGrid(!showGrid);
   };
+
+  const pixelsArray = Array.from(pixels.values());
+  const validPixelsCount = pixelsArray.filter((p: Pixel) => p.painter !== 'pending').length;
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
@@ -163,7 +167,7 @@ export const CanvasControls: React.FC = () => {
       <div className="mt-3 p-2 bg-gray-50 rounded text-xs space-y-1">
         <div>Zoom: {(viewPort.scale * 100).toFixed(0)}%</div>
         <div>Position: {Math.round(viewPort.x)}, {Math.round(viewPort.y)}</div>
-        <div>Pixels: {Array.from(pixels.values()).filter((p: Pixel) => p.painter !== 'pending').length}</div>
+        <div>Pixels: {validPixelsCount}</div>
         <div>Grid: {showGrid ? 'Visible' : 'Hidden'}</div>
       </div>
 
