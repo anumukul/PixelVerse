@@ -127,7 +127,7 @@ export const MarketplacePanel: React.FC = () => {
     
     setLoading(true);
     try {
-      const [tokens, prices, total] = await publicClient.readContract({
+      const [tokens] = await publicClient.readContract({
         address: deploymentInfo.contractAddress as `0x${string}`,
         abi: PixelCanvasABI,
         functionName: 'getTokensForSale',

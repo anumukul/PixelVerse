@@ -16,7 +16,6 @@ export const BatchPaintControls: React.FC<BatchPaintControlsProps> = ({
   const { writeContract } = useWriteContract();
   const { 
     batchMode, 
-    selection,
     selectedColor,
     shapeMode,
     setBatchMode,

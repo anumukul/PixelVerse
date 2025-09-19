@@ -151,7 +151,7 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
     console.log('Portfolio Store: Force refresh completed, owned pixels:', owned.length);
   },
 
-  getUserStats: (userAddress) => {
+  getUserStats: () => {
     return get().userStats;
   },
 
@@ -171,7 +171,7 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
     ) || null;
   },
 
-  navigateToPixel: (pixel) => {
+  navigateToPixel: () => {
     // This function can be implemented if needed
   }
 }));

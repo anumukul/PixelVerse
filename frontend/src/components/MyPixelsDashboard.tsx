@@ -275,14 +275,6 @@ export const MyPixelsDashboard: React.FC = () => {
     return new Date(timestamp * 1000).toLocaleDateString();
   };
 
-  const isPixelForSale = async (pixel: any): Promise<boolean> => {
-    const tokenId = await getTokenIdForPixel(pixel);
-    if (!tokenId) return false;
-    
-    const saleData = pixelSaleData.get(tokenId);
-    return saleData?.isForSale || false;
-  };
-
   if (!isConnected) return null;
 
   const forSaleCount = Array.from(pixelSaleData.values()).filter(data => data.isForSale).length;

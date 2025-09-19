@@ -14,8 +14,7 @@ interface PixelCanvasProps {
 }
 
 export const PixelCanvas: React.FC<PixelCanvasProps> = ({ 
-  onTransactionStart, 
-  onTransactionUpdate 
+  onTransactionStart
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -45,8 +44,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     clearFreehandPath,
     setHoveredPixel,
     hideTooltip,
-    getPixelAt,
-    getSelectedPixels
+    getPixelAt
   } = useCanvasStore();
   const { 
     showOwnedPixels, 

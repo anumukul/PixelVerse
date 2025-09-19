@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 
 interface Transaction {
   hash: string;
   status: 'pending' | 'confirmed' | 'failed';
-  type: 'paint';
+  type: 'paint' | 'buy' | 'list' | 'remove';
   timestamp: number;
 }
 
@@ -24,6 +24,31 @@ export const TransactionToast: React.FC<TransactionToastProps> = ({ transactions
   if (!transactions || transactions.length === 0) {
     return null;
   }
+
+  const getTransactionMessage = (tx: Transaction) => {
+    switch (tx.type) {
+      case 'paint':
+        return tx.status === 'pending' ? 'Painting pixel...' :
+               tx.status === 'confirmed' ? 'Pixel painted!' :
+               'Paint failed';
+      case 'buy':
+        return tx.status === 'pending' ? 'Buying pixel...' :
+               tx.status === 'confirmed' ? 'Pixel bought!' :
+               'Purchase failed';
+      case 'list':
+        return tx.status === 'pending' ? 'Listing pixel...' :
+               tx.status === 'confirmed' ? 'Pixel listed!' :
+               'Listing failed';
+      case 'remove':
+        return tx.status === 'pending' ? 'Removing listing...' :
+               tx.status === 'confirmed' ? 'Listing removed!' :
+               'Remove failed';
+      default:
+        return tx.status === 'pending' ? 'Transaction pending...' :
+               tx.status === 'confirmed' ? 'Transaction confirmed!' :
+               'Transaction failed';
+    }
+  };
 
   return (
     <div className="fixed top-4 right-4 space-y-2 z-50">
@@ -46,9 +71,7 @@ export const TransactionToast: React.FC<TransactionToastProps> = ({ transactions
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium">
-                  {tx.status === 'pending' ? 'Painting pixel...' :
-                   tx.status === 'confirmed' ? 'Pixel painted!' :
-                   'Transaction failed'}
+                  {getTransactionMessage(tx)}
                 </p>
                 <p className="text-xs text-gray-600">
                   {shortHash}

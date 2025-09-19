@@ -16,7 +16,7 @@ export const useContractEvents = () => {
   const isLoadingRegion = useRef(new Set<string>());
   const paintedPixelCoords = useRef(new Set<string>());
   const userPixelsLoaded = useRef(false);
-  const cursorCleanupInterval = useRef<NodeJS.Timeout>();
+  const cursorCleanupInterval = useRef<NodeJS.Timeout | null>(null);
 
   useWatchContractEvent({
     address: deploymentInfo.contractAddress as `0x${string}`,
@@ -78,7 +78,7 @@ export const useContractEvents = () => {
                 address: deploymentInfo.contractAddress as `0x${string}`,
                 abi: PixelCanvasABI,
                 functionName: 'pixels',
-                args: [args.tokenId]
+                args: [args.tokenId!]
               }) as readonly [number, number, number, string, number, number];
 
               if (pixelData) {
@@ -135,7 +135,7 @@ export const useContractEvents = () => {
                 address: deploymentInfo.contractAddress as `0x${string}`,
                 abi: PixelCanvasABI,
                 functionName: 'pixels',
-                args: [args.tokenId]
+                args: [args.tokenId!]
               }) as readonly [number, number, number, string, number, number];
 
               if (pixelData) {
@@ -214,7 +214,7 @@ export const useContractEvents = () => {
         address: deploymentInfo.contractAddress as `0x${string}`,
         abi: PixelCanvasABI,
         functionName: 'getUserPixels',
-        args: [userAddress]
+        args: [userAddress as `0x${string}`]
       }) as readonly bigint[];
 
       console.log('loadUserPixels: User pixel IDs:', userPixelIds.map(id => id.toString()));

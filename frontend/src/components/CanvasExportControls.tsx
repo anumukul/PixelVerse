@@ -1,9 +1,8 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { useCanvasStore } from '../stores/canvasStore';
 
 export const CanvasExportControls: React.FC = () => {
   const { pixels, viewPort } = useCanvasStore();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const exportCurrentView = () => {
     const canvas = document.createElement('canvas');
