@@ -38,3 +38,20 @@ export interface CanvasStats {
   pixelPrice: string;
   totalSupply: number;
 }
+
+export type ShapeType = 'rectangle' | 'circle' | 'line' | 'freehand';
+
+export interface BatchSelection {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  isSelecting: boolean;
+}
+
+export interface ShapePreview {
+  type: ShapeType;
+  startPoint: { x: number; y: number };
+  endPoint: { x: number; y: number };
+  pixels: Array<{ x: number; y: number }>;
+}

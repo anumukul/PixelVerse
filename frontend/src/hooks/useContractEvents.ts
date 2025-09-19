@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { usePublicClient, useWatchContractEvent, useAccount } from 'wagmi';
 import { useCanvasStore } from '../stores/canvasStore';
+import { usePortfolioStore } from '../stores/portfolioStore';
 import type { Pixel, UserCursor } from '../types/index';
 import deploymentInfo from '../../deployment-info.json';
 import { PixelCanvasABI } from '../contracts/PixelCanvas';
@@ -9,6 +10,7 @@ export const useContractEvents = () => {
   const publicClient = usePublicClient();
   const { address } = useAccount();
   const { setPixel, getPixelAt, updateCursor, clearCursors } = useCanvasStore();
+  const { forceRefresh } = usePortfolioStore();
   const processedEvents = useRef(new Set<string>());
   const loadedRegions = useRef(new Set<string>());
   const isLoadingRegion = useRef(new Set<string>());
@@ -44,6 +46,41 @@ export const useContractEvents = () => {
             setPixel(pixel);
             processedEvents.current.add(eventId);
             paintedPixelCoords.current.add(`${pixel.x}-${pixel.y}`);
+            
+           
+            if (address && pixel.painter.toLowerCase() === address.toLowerCase()) {
+              setTimeout(() => loadUserPixels(address), 500);
+            }
+          }
+        }
+      });
+    },
+  });
+
+  useWatchContractEvent({
+    address: deploymentInfo.contractAddress as `0x${string}`,
+    abi: PixelCanvasABI,
+    eventName: 'PixelSold',
+    onLogs(logs) {
+      logs.forEach((log) => {
+        const { args } = log;
+        if (args) {
+          console.log('PixelSold event detected:', {
+            tokenId: args.tokenId?.toString(),
+            seller: args.seller,
+            buyer: args.buyer,
+            price: args.price?.toString()
+          });
+          
+         
+          if (address && (
+            args.seller?.toLowerCase() === address.toLowerCase() || 
+            args.buyer?.toLowerCase() === address.toLowerCase()
+          )) {
+            console.log('Reloading pixels due to PixelSold event for current user');
+            setTimeout(() => {
+              loadUserPixels(address);
+            }, 1000);
           }
         }
       });
@@ -83,30 +120,33 @@ export const useContractEvents = () => {
   }, [clearCursors]);
 
   const loadUserPixels = useCallback(async (userAddress: string) => {
-    if (!publicClient || userPixelsLoaded.current) return;
+    if (!publicClient) {
+      console.log('loadUserPixels: No public client available');
+      return;
+    }
 
     try {
-      console.log('Loading user pixels for:', userAddress);
+      console.log('loadUserPixels: Loading user pixels for:', userAddress);
       
-      // Get all pixels owned by the user
       const userPixelIds = await publicClient.readContract({
         address: deploymentInfo.contractAddress as `0x${string}`,
         abi: PixelCanvasABI,
         functionName: 'getUserPixels',
         args: [userAddress]
-      });
+      }) as readonly bigint[];
 
-      console.log('User pixel IDs:', userPixelIds);
+      console.log('loadUserPixels: User pixel IDs:', userPixelIds.map(id => id.toString()));
 
-      // Load pixel data for each owned pixel
-      for (const tokenId of userPixelIds as bigint[]) {
+      const userPixels: Pixel[] = [];
+      
+      for (const tokenId of userPixelIds) {
         try {
           const pixelData = await publicClient.readContract({
             address: deploymentInfo.contractAddress as `0x${string}`,
             abi: PixelCanvasABI,
             functionName: 'pixels',
             args: [tokenId]
-          });
+          }) as readonly [number, number, number, string, number, number];
 
           if (pixelData && pixelData[3] !== '0x0000000000000000000000000000000000000000') {
             const pixel: Pixel = {
@@ -118,6 +158,10 @@ export const useContractEvents = () => {
               version: Number(pixelData[5])
             };
 
+            console.log('loadUserPixels: Loaded pixel:', pixel);
+            userPixels.push(pixel);
+            
+           
             const existing = getPixelAt(pixel.x, pixel.y);
             if (!existing || existing.version < pixel.version) {
               setPixel(pixel);
@@ -125,16 +169,20 @@ export const useContractEvents = () => {
             }
           }
         } catch (error) {
-          console.error('Error loading pixel data for token:', tokenId, error);
+          console.error('loadUserPixels: Error loading pixel data for token:', tokenId.toString(), error);
         }
       }
 
-      userPixelsLoaded.current = true;
-      console.log('User pixels loaded successfully');
+      console.log('loadUserPixels: Total loaded user pixels:', userPixels.length);
+      
+     
+      forceRefresh(userAddress, userPixels);
+      
+      console.log('loadUserPixels: User pixels loaded and portfolio refreshed successfully');
     } catch (error) {
-      console.error('Failed to load user pixels:', error);
+      console.error('loadUserPixels: Failed to load user pixels:', error);
     }
-  }, [publicClient, setPixel, getPixelAt]);
+  }, [publicClient, setPixel, getPixelAt, forceRefresh]);
 
   const loadCanvasRegion = useCallback(async (startX: number, startY: number, width: number, height: number) => {
     if (!publicClient) return;
@@ -153,9 +201,9 @@ export const useContractEvents = () => {
         abi: PixelCanvasABI,
         functionName: 'getCanvasRegion',
         args: [startX, startY, width, height]
-      });
+      }) as readonly any[];
 
-      (regionPixels as any[]).forEach((pixelData) => {
+      regionPixels.forEach((pixelData: any) => {
         const pixel: Pixel = {
           x: Number(pixelData.x),
           y: Number(pixelData.y),
@@ -183,11 +231,12 @@ export const useContractEvents = () => {
   const refreshCanvas = useCallback(async () => {
     if (!publicClient) return;
 
-    // Reset loading state
+    console.log('refreshCanvas: Refreshing canvas...');
+
     userPixelsLoaded.current = false;
 
-    // Load user pixels first if connected
     if (address) {
+      console.log('refreshCanvas: Loading pixels for current user:', address);
       await loadUserPixels(address);
     }
 
@@ -209,7 +258,6 @@ export const useContractEvents = () => {
     
     baseRegions.forEach(region => regionsToLoad.add(region));
     
-    // Add regions for painted pixels
     paintedPixelCoords.current.forEach(coordKey => {
       const [x, y] = coordKey.split('-').map(Number);
       const regionStartX = Math.floor(x / 100) * 100;
@@ -223,13 +271,17 @@ export const useContractEvents = () => {
     });
 
     await Promise.all(loadPromises);
+    console.log('refreshCanvas: Canvas refresh completed');
   }, [loadCanvasRegion, loadUserPixels, publicClient, address]);
 
-  
   useEffect(() => {
     if (address && publicClient) {
+      console.log('useEffect: Address changed, reloading user pixels:', address);
       userPixelsLoaded.current = false;
-      loadUserPixels(address);
+      
+      setTimeout(() => {
+        loadUserPixels(address);
+      }, 1000);
     }
   }, [address, loadUserPixels, publicClient]);
 

@@ -7,6 +7,8 @@ interface BatchPaintControlsProps {
   onTransactionStart: (hash: string) => void;
 }
 
+type ShapeType = 'rectangle' | 'circle' | 'line' | 'freehand';
+
 export const BatchPaintControls: React.FC<BatchPaintControlsProps> = ({
   onTransactionStart
 }) => {
@@ -16,10 +18,12 @@ export const BatchPaintControls: React.FC<BatchPaintControlsProps> = ({
     batchMode, 
     selection,
     selectedColor,
+    shapeMode,
     setBatchMode,
     clearSelection,
     getSelectedPixels,
-    getSelectionCost
+    getSelectionCost,
+    setShapeMode
   } = useCanvasStore();
   const { batchPaintPixels } = useWalletStore();
 
@@ -29,6 +33,14 @@ export const BatchPaintControls: React.FC<BatchPaintControlsProps> = ({
 
   const handleToggleBatchMode = () => {
     setBatchMode(!batchMode);
+    if (batchMode) {
+      setShapeMode('rectangle');
+    }
+  };
+
+  const handleShapeSelect = (shape: ShapeType) => {
+    setShapeMode(shape);
+    clearSelection();
   };
 
   const handleClearSelection = () => {
@@ -57,6 +69,16 @@ export const BatchPaintControls: React.FC<BatchPaintControlsProps> = ({
 
   if (!isConnected) return null;
 
+  const getShapeInstructions = (shape: ShapeType): string => {
+    switch (shape) {
+      case 'rectangle': return 'Click and drag to select area';
+      case 'circle': return 'Click center, drag to set radius';
+      case 'line': return 'Click start point, drag to end';
+      case 'freehand': return 'Click and drag to draw freely';
+      default: return 'Select a shape tool';
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
       <h3 className="font-semibold text-gray-800 mb-3">Batch Paint</h3>
@@ -75,9 +97,28 @@ export const BatchPaintControls: React.FC<BatchPaintControlsProps> = ({
 
         {batchMode && (
           <>
+            <div className="grid grid-cols-2 gap-1">
+              {(['rectangle', 'circle', 'line', 'freehand'] as ShapeType[]).map((shape) => (
+                <button
+                  key={shape}
+                  onClick={() => handleShapeSelect(shape)}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                    shapeMode === shape
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {shape === 'rectangle' && '□ Rect'}
+                  {shape === 'circle' && '○ Circle'}
+                  {shape === 'line' && '╱ Line'}
+                  {shape === 'freehand' && '✎ Free'}
+                </button>
+              ))}
+            </div>
+
             <div className="p-3 bg-blue-50 rounded border border-blue-200">
               <p className="text-xs text-blue-800 mb-2">
-                Click and drag to select area
+                {getShapeInstructions(shapeMode)}
               </p>
               <div className="text-xs text-blue-700 space-y-1">
                 <div>Selected: {selectedPixels.length} pixels</div>
@@ -110,7 +151,7 @@ export const BatchPaintControls: React.FC<BatchPaintControlsProps> = ({
 
             {hasSelection && (
               <div className="text-xs text-gray-500">
-                <div>Area: {Math.abs((selection?.endX || 0) - (selection?.startX || 0) + 1)} × {Math.abs((selection?.endY || 0) - (selection?.startY || 0) + 1)}</div>
+                <div>Shape: {shapeMode}</div>
                 <div>Single cost: {(selectedPixels.length * 0.001).toFixed(4)} STT</div>
                 <div>Batch cost: {totalCost.toFixed(4)} STT</div>
               </div>

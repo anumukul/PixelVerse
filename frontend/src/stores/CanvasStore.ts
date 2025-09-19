@@ -9,12 +9,17 @@ interface BatchSelection {
   isSelecting: boolean;
 }
 
+type ShapeType = 'rectangle' | 'circle' | 'line' | 'freehand';
+
 interface CanvasStore extends CanvasState {
   batchMode: boolean;
   selection: BatchSelection | null;
+  shapeMode: ShapeType;
   hoveredPixel: Pixel | null;
   tooltipPosition: { x: number; y: number };
   showTooltip: boolean;
+  showGrid: boolean;
+  freehandPath: Array<{x: number, y: number}>;
   
   setPixel: (pixel: Pixel) => void;
   updateCursor: (cursor: UserCursor) => void;
@@ -30,6 +35,7 @@ interface CanvasStore extends CanvasState {
   getActiveCursorsCount: () => number;
   
   setBatchMode: (enabled: boolean) => void;
+  setShapeMode: (mode: ShapeType) => void;
   startSelection: (x: number, y: number) => void;
   updateSelection: (x: number, y: number) => void;
   endSelection: () => void;
@@ -37,8 +43,16 @@ interface CanvasStore extends CanvasState {
   getSelectedPixels: () => Array<{x: number, y: number}>;
   getSelectionCost: () => number;
   
+  addToFreehandPath: (x: number, y: number) => void;
+  clearFreehandPath: () => void;
+  
   setHoveredPixel: (pixel: Pixel | null, position?: { x: number; y: number }) => void;
   hideTooltip: () => void;
+  setShowGrid: (show: boolean) => void;
+  
+  getCirclePixels: (centerX: number, centerY: number, radius: number) => Array<{x: number, y: number}>;
+  getLinePixels: (x1: number, y1: number, x2: number, y2: number) => Array<{x: number, y: number}>;
+  getRectanglePixels: (x1: number, y1: number, x2: number, y2: number) => Array<{x: number, y: number}>;
 }
 
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
@@ -50,9 +64,12 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   dragStart: null,
   batchMode: false,
   selection: null,
+  shapeMode: 'rectangle',
   hoveredPixel: null,
   tooltipPosition: { x: 0, y: 0 },
   showTooltip: false,
+  showGrid: true,
+  freehandPath: [],
 
   setPixel: (pixel) => {
     const current = get();
@@ -149,33 +166,53 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   setBatchMode: (enabled) => {
     set({ batchMode: enabled });
     if (!enabled) {
-      set({ selection: null });
+      set({ selection: null, freehandPath: [] });
     }
   },
 
+  setShapeMode: (mode) => {
+    set({ shapeMode: mode });
+    get().clearSelection();
+    get().clearFreehandPath();
+  },
+
   startSelection: (x, y) => {
-    set({
-      selection: {
-        startX: x,
-        startY: y,
-        endX: x,
-        endY: y,
-        isSelecting: true
-      }
-    });
+    const { shapeMode } = get();
+    
+    if (shapeMode === 'freehand') {
+      set({ freehandPath: [{ x, y }] });
+    } else {
+      set({
+        selection: {
+          startX: x,
+          startY: y,
+          endX: x,
+          endY: y,
+          isSelecting: true
+        }
+      });
+    }
   },
 
   updateSelection: (x, y) => {
-    set((state) => {
-      if (!state.selection) return state;
-      return {
-        selection: {
-          ...state.selection,
-          endX: x,
-          endY: y
-        }
-      };
-    });
+    const { shapeMode } = get();
+    
+    if (shapeMode === 'freehand') {
+      set((state) => ({
+        freehandPath: [...state.freehandPath, { x, y }]
+      }));
+    } else {
+      set((state) => {
+        if (!state.selection) return state;
+        return {
+          selection: {
+            ...state.selection,
+            endX: x,
+            endY: y
+          }
+        };
+      });
+    }
   },
 
   endSelection: () => {
@@ -194,28 +231,126 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     set({ selection: null });
   },
 
+  addToFreehandPath: (x, y) => {
+    set((state) => ({
+      freehandPath: [...state.freehandPath, { x, y }]
+    }));
+  },
+
+  clearFreehandPath: () => {
+    set({ freehandPath: [] });
+  },
+
   getSelectedPixels: () => {
-    const { selection } = get();
+    const { selection, shapeMode, freehandPath } = get();
+    
+    if (shapeMode === 'freehand') {
+      const uniquePixels = new Set<string>();
+      const pixels: Array<{x: number, y: number}> = [];
+      
+      freehandPath.forEach(({ x, y }) => {
+        const key = `${x}-${y}`;
+        if (!uniquePixels.has(key) && x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+          uniquePixels.add(key);
+          pixels.push({ x, y });
+        }
+      });
+      
+      return pixels;
+    }
+    
     if (!selection) return [];
     
+    const { startX, startY, endX, endY } = selection;
+    
+    switch (shapeMode) {
+      case 'rectangle':
+        return get().getRectanglePixels(startX, startY, endX, endY);
+      case 'circle': {
+        const centerX = startX;
+        const centerY = startY;
+        const radius = Math.max(Math.abs(endX - startX), Math.abs(endY - startY));
+        return get().getCirclePixels(centerX, centerY, radius);
+      }
+      case 'line':
+        return get().getLinePixels(startX, startY, endX, endY);
+      default:
+        return get().getRectanglePixels(startX, startY, endX, endY);
+    }
+  },
+
+  getSelectionCost: () => {
+    const pixels = get().getSelectedPixels();
+    return pixels.length * 0.001;
+  },
+
+  getRectanglePixels: (x1, y1, x2, y2) => {
     const pixels = [];
-    const minX = Math.min(selection.startX, selection.endX);
-    const maxX = Math.max(selection.startX, selection.endX);
-    const minY = Math.min(selection.startY, selection.endY);
-    const maxY = Math.max(selection.startY, selection.endY);
+    const minX = Math.min(x1, x2);
+    const maxX = Math.max(x1, x2);
+    const minY = Math.min(y1, y2);
+    const maxY = Math.max(y1, y2);
     
     for (let x = minX; x <= maxX; x++) {
       for (let y = minY; y <= maxY; y++) {
-        pixels.push({ x, y });
+        if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+          pixels.push({ x, y });
+        }
       }
     }
     
     return pixels;
   },
 
-  getSelectionCost: () => {
-    const pixels = get().getSelectedPixels();
-    return pixels.length * 0.001;
+  getCirclePixels: (centerX, centerY, radius) => {
+    const pixels = [];
+    const radiusSquared = radius * radius;
+    
+    for (let x = centerX - radius; x <= centerX + radius; x++) {
+      for (let y = centerY - radius; y <= centerY + radius; y++) {
+        const dx = x - centerX;
+        const dy = y - centerY;
+        const distanceSquared = dx * dx + dy * dy;
+        
+        if (distanceSquared <= radiusSquared && x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+          pixels.push({ x, y });
+        }
+      }
+    }
+    
+    return pixels;
+  },
+
+  getLinePixels: (x1, y1, x2, y2) => {
+    const pixels = [];
+    const dx = Math.abs(x2 - x1);
+    const dy = Math.abs(y2 - y1);
+    const sx = x1 < x2 ? 1 : -1;
+    const sy = y1 < y2 ? 1 : -1;
+    let err = dx - dy;
+    
+    let x = x1;
+    let y = y1;
+    
+    while (true) {
+      if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+        pixels.push({ x, y });
+      }
+      
+      if (x === x2 && y === y2) break;
+      
+      const e2 = 2 * err;
+      if (e2 > -dy) {
+        err -= dy;
+        x += sx;
+      }
+      if (e2 < dx) {
+        err += dx;
+        y += sy;
+      }
+    }
+    
+    return pixels;
   },
 
   setHoveredPixel: (pixel, position = { x: 0, y: 0 }) => {
@@ -232,6 +367,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       showTooltip: false
     });
   },
+
+  setShowGrid: (show) => set({ showGrid: show }),
 
   setSelectedColor: (color) => set({ selectedColor: color }),
   setViewPort: (x, y, scale) => set({ viewPort: { x, y, scale } }),

@@ -9,12 +9,13 @@ import { TransactionToast } from './components/TransactionToast';
 import { BatchPaintControls } from './components/BatchPaintControls';
 import { CanvasExportControls } from './components/CanvasExportControls';
 import { MyPixelsDashboard } from './components/MyPixelsDashboard';
+import { MarketplacePanel } from './components/MarketplacePanel';
 import { useContractEvents } from './hooks/useContractEvents';
 
 interface Transaction {
   hash: string;
   status: 'pending' | 'confirmed' | 'failed';
-  type: 'paint';
+  type: 'paint' | 'buy' | 'list' | 'remove';
   timestamp: number;
 }
 
@@ -29,18 +30,17 @@ function App() {
     }
   }, [isConnected, refreshCanvas]);
 
-  // Load user pixels when address changes
   useEffect(() => {
     if (isConnected && address) {
       loadUserPixels(address);
     }
   }, [isConnected, address, loadUserPixels]);
 
-  const addTransaction = (hash: string) => {
+  const addTransaction = (hash: string, type: Transaction['type'] = 'paint') => {
     setTransactions(prev => [...prev, {
       hash,
       status: 'pending',
-      type: 'paint',
+      type,
       timestamp: Date.now()
     }]);
   };
@@ -62,7 +62,7 @@ function App() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">PixelVerse</h1>
-              <p className="text-gray-600 mt-1">Collaborative NFT Canvas on Somnia</p>
+              <p className="text-gray-600 mt-1">Collaborative NFT Canvas & Marketplace on Somnia</p>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-500">
@@ -94,6 +94,7 @@ function App() {
               <>
                 <ColorPalette />
                 <MyPixelsDashboard />
+                <MarketplacePanel />
                 <BatchPaintControls 
                   onTransactionStart={addTransaction}
                 />
@@ -112,13 +113,15 @@ function App() {
                 Welcome to PixelVerse
               </h3>
               <p className="text-blue-700 mb-4">
-                Connect your wallet to start painting pixels and creating NFTs on the Somnia blockchain.
+                Connect your wallet to start painting pixels, creating NFTs, and trading on the marketplace.
               </p>
               <ul className="text-sm text-blue-600 space-y-1 text-left">
                 <li>• Each pixel becomes an NFT</li>
                 <li>• Real-time collaborative canvas</li>
+                <li>• Trade pixels on the marketplace</li>
                 <li>• Track your pixel portfolio</li>
                 <li>• Batch painting for efficiency</li>
+                <li>• Rich NFT metadata with images</li>
               </ul>
             </div>
           </div>

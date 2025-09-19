@@ -3,7 +3,7 @@ import { useCanvasStore } from '../stores/canvasStore';
 import { useContractEvents } from '../hooks/useContractEvents';
 
 export const CanvasControls: React.FC = () => {
-  const { viewPort, pixels, setViewPort } = useCanvasStore();
+  const { viewPort, pixels, setViewPort, showGrid, setShowGrid } = useCanvasStore();
   const { refreshCanvas } = useContractEvents();
   const [jumpCoords, setJumpCoords] = useState({ x: '', y: '' });
 
@@ -63,6 +63,10 @@ export const CanvasControls: React.FC = () => {
     setJumpCoords({ x: '', y: '' });
   };
 
+  const toggleGrid = () => {
+    setShowGrid(!showGrid);
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
       <h3 className="font-semibold text-gray-800 mb-3">Controls</h3>
@@ -97,6 +101,17 @@ export const CanvasControls: React.FC = () => {
             Fit Art
           </button>
         </div>
+
+        <button
+          onClick={toggleGrid}
+          className={`w-full px-3 py-1 rounded text-sm transition-colors ${
+            showGrid
+              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+              : 'bg-gray-100 hover:bg-gray-200'
+          }`}
+        >
+          {showGrid ? 'Hide Grid' : 'Show Grid'}
+        </button>
         
         <button
           onClick={resetView}
@@ -148,6 +163,7 @@ export const CanvasControls: React.FC = () => {
         <div>Zoom: {(viewPort.scale * 100).toFixed(0)}%</div>
         <div>Position: {Math.round(viewPort.x)}, {Math.round(viewPort.y)}</div>
         <div>Pixels: {Array.from(pixels.values()).filter(p => p.painter !== 'pending').length}</div>
+        <div>Grid: {showGrid ? 'Visible' : 'Hidden'}</div>
       </div>
 
       <div className="mt-3 text-xs text-gray-500">
@@ -155,6 +171,7 @@ export const CanvasControls: React.FC = () => {
         <div>Right drag: Pan canvas</div>
         <div>Scroll: Zoom in/out</div>
         <div>Hover: View pixel info</div>
+        <div>Grid auto-shows at 2x+ zoom</div>
       </div>
     </div>
   );

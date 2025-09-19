@@ -21,6 +21,7 @@ interface PortfolioStore {
   isUserPixel: (pixel: Pixel, userAddress: string) => boolean;
   getOwnedPixelsAtCoordinate: (x: number, y: number, userAddress: string) => Pixel | null;
   navigateToPixel: (pixel: Pixel) => void;
+  forceRefresh: (userAddress: string, pixels: Pixel[]) => void;
 }
 
 export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
@@ -38,21 +39,91 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
   setShowOwnedPixels: (show) => set({ showOwnedPixels: show }),
 
   updateOwnedPixels: (userAddress, allPixels) => {
-    const owned = Array.from(allPixels.values()).filter(
-      pixel => pixel.painter === userAddress && pixel.painter !== 'pending'
-    );
+    console.log('Portfolio Store: Updating pixels for user:', userAddress);
+    console.log('Portfolio Store: Total pixels received:', allPixels.size);
+    console.log('Portfolio Store: All pixels:', Array.from(allPixels.entries()));
+    
+    const owned = Array.from(allPixels.values()).filter(pixel => {
+      const isPainter = pixel.painter.toLowerCase() === userAddress.toLowerCase();
+      const notPending = pixel.painter !== 'pending';
+      const isValid = pixel.painter !== '0x0000000000000000000000000000000000000000';
+      
+      console.log(`Portfolio Store: Pixel (${pixel.x},${pixel.y}) - painter: ${pixel.painter}, user: ${userAddress}, isPainter: ${isPainter}, notPending: ${notPending}, isValid: ${isValid}`);
+      
+      return isPainter && notPending && isValid;
+    });
+    
+    console.log('Portfolio Store: Filtered owned pixels:', owned.length, owned);
     
     const colorCounts = new Map<string, number>();
-    let firstDate = null;
-    let lastDate = null;
+    let firstDate: number | null = null;
+    let lastDate: number | null = null;
     
     owned.forEach(pixel => {
-      colorCounts.set(pixel.color, (colorCounts.get(pixel.color) || 0) + 1);
+      const count = colorCounts.get(pixel.color) || 0;
+      colorCounts.set(pixel.color, count + 1);
       
-      if (!firstDate || pixel.timestamp < firstDate) {
+      if (firstDate === null || pixel.timestamp < firstDate) {
         firstDate = pixel.timestamp;
       }
-      if (!lastDate || pixel.timestamp > lastDate) {
+      if (lastDate === null || pixel.timestamp > lastDate) {
+        lastDate = pixel.timestamp;
+      }
+    });
+
+    let favoriteColor = '#FF0000';
+    let maxCount = 0;
+    colorCounts.forEach((count, color) => {
+      if (count > maxCount) {
+        maxCount = count;
+        favoriteColor = color;
+      }
+    });
+
+    const stats: UserStats = {
+      totalPixels: owned.length,
+      totalSpent: owned.length * 0.001,
+      firstPixelDate: firstDate,
+      lastPixelDate: lastDate,
+      favoriteColor,
+      uniqueColors: colorCounts.size
+    };
+
+    console.log('Portfolio Store: Final stats:', stats);
+    console.log('Portfolio Store: Setting owned pixels:', owned.length);
+
+    set({ 
+      ownedPixels: owned.sort((a, b) => b.timestamp - a.timestamp),
+      userStats: stats 
+    });
+    
+    console.log('Portfolio Store: State updated successfully');
+  },
+
+  forceRefresh: (userAddress, pixels) => {
+    console.log('Portfolio Store: Force refresh called for:', userAddress);
+    console.log('Portfolio Store: Direct pixels provided:', pixels.length);
+    
+    const owned = pixels.filter(pixel => {
+      const isPainter = pixel.painter.toLowerCase() === userAddress.toLowerCase();
+      const notPending = pixel.painter !== 'pending';
+      const isValid = pixel.painter !== '0x0000000000000000000000000000000000000000';
+      
+      return isPainter && notPending && isValid;
+    });
+
+    const colorCounts = new Map<string, number>();
+    let firstDate: number | null = null;
+    let lastDate: number | null = null;
+    
+    owned.forEach(pixel => {
+      const count = colorCounts.get(pixel.color) || 0;
+      colorCounts.set(pixel.color, count + 1);
+      
+      if (firstDate === null || pixel.timestamp < firstDate) {
+        firstDate = pixel.timestamp;
+      }
+      if (lastDate === null || pixel.timestamp > lastDate) {
         lastDate = pixel.timestamp;
       }
     });
@@ -79,23 +150,29 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
       ownedPixels: owned.sort((a, b) => b.timestamp - a.timestamp),
       userStats: stats 
     });
+    
+    console.log('Portfolio Store: Force refresh completed, owned pixels:', owned.length);
   },
 
   getUserStats: (userAddress) => {
-    get().updateOwnedPixels(userAddress, new Map());
     return get().userStats;
   },
 
   isUserPixel: (pixel, userAddress) => {
-    return pixel.painter === userAddress && pixel.painter !== 'pending';
+    const result = pixel.painter.toLowerCase() === userAddress.toLowerCase() && pixel.painter !== 'pending';
+    return result;
   },
 
   getOwnedPixelsAtCoordinate: (x, y, userAddress) => {
     const owned = get().ownedPixels;
-    return owned.find(pixel => pixel.x === x && pixel.y === y && pixel.painter === userAddress) || null;
+    return owned.find(pixel => 
+      pixel.x === x && 
+      pixel.y === y && 
+      pixel.painter.toLowerCase() === userAddress.toLowerCase()
+    ) || null;
   },
 
   navigateToPixel: (pixel) => {
-   
+    
   }
 }));

@@ -1,9 +1,4 @@
 {
-  "contractAddress": "0x5d81c6c6911080fB0c338D06e560dE3d47EFc264",
-  "deployer": "0xF00b3321E87d0CFABe761B18A84333537e97E055",
-  "network": "somnia_testnet",
-  "chainId": 50312,
-  "blockNumber": 178723849,
-  "transactionHash": "0xf008991f9837b3ca92c887dd520797765709aa3d315359d5f37cc734259d8459",
-  "deployedAt": "2025-09-17T12:40:23.773Z"
+  "contractAddress": "0x4123561C4fB52f750fecc0406d335245aB1e8585",
+  "chainId": 50312
 }

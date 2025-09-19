@@ -1,6 +1,6 @@
 
 
-export const PixelCanvasABI= [
+export const PixelCanvasABI=  [
     {
       "inputs": [],
       "stateMutability": "nonpayable",
@@ -18,6 +18,11 @@ export const PixelCanvasABI= [
     },
     {
       "inputs": [],
+      "name": "CannotBuyOwnToken",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "InsufficientPayment",
       "type": "error"
     },
@@ -28,12 +33,37 @@ export const PixelCanvasABI= [
     },
     {
       "inputs": [],
+      "name": "InvalidPrice",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotTokenOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PaymentFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "PixelNotFound",
       "type": "error"
     },
     {
       "inputs": [],
       "name": "RegionTooLarge",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "TokenAlreadyForSale",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "TokenNotForSale",
       "type": "error"
     },
     {
@@ -148,6 +178,37 @@ export const PixelCanvasABI= [
         {
           "indexed": true,
           "internalType": "address",
+          "name": "seller",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "price",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "timestamp",
+          "type": "uint32"
+        }
+      ],
+      "name": "PixelListedForSale",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
           "name": "painter",
           "type": "address"
         },
@@ -183,6 +244,74 @@ export const PixelCanvasABI= [
         }
       ],
       "name": "PixelPainted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "seller",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "timestamp",
+          "type": "uint32"
+        }
+      ],
+      "name": "PixelRemovedFromSale",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "seller",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "buyer",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "price",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "fee",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "timestamp",
+          "type": "uint32"
+        }
+      ],
+      "name": "PixelSold",
       "type": "event"
     },
     {
@@ -268,6 +397,19 @@ export const PixelCanvasABI= [
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "FEE_DENOMINATOR",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
@@ -330,6 +472,19 @@ export const PixelCanvasABI= [
     {
       "inputs": [
         {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "buyPixel",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "bytes32",
           "name": "",
           "type": "bytes32"
@@ -341,6 +496,25 @@ export const PixelCanvasABI= [
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "forSale",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -458,6 +632,29 @@ export const PixelCanvasABI= [
         {
           "internalType": "uint256",
           "name": "totalSupply",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getMarketplaceStats",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "totalForSale",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "marketplaceFeePercent",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "totalTradingVolume",
           "type": "uint256"
         }
       ],
@@ -584,6 +781,69 @@ export const PixelCanvasABI= [
     {
       "inputs": [
         {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getPixelSaleInfo",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "isForSale",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "price",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "seller",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "offset",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "limit",
+          "type": "uint256"
+        }
+      ],
+      "name": "getTokensForSale",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "tokens",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "prices",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256",
+          "name": "total",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "user",
           "type": "address"
@@ -619,6 +879,37 @@ export const PixelCanvasABI= [
           "internalType": "bool",
           "name": "",
           "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "price",
+          "type": "uint256"
+        }
+      ],
+      "name": "listPixelForSale",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "marketplaceFee",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -726,6 +1017,25 @@ export const PixelCanvasABI= [
           "type": "uint256"
         }
       ],
+      "name": "pixelPrices",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
       "name": "pixels",
       "outputs": [
         {
@@ -760,6 +1070,19 @@ export const PixelCanvasABI= [
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "removeFromSale",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -823,6 +1146,25 @@ export const PixelCanvasABI= [
     {
       "inputs": [
         {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "sellers",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "operator",
           "type": "address"
@@ -834,6 +1176,19 @@ export const PixelCanvasABI= [
         }
       ],
       "name": "setApprovalForAll",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "newFee",
+          "type": "uint256"
+        }
+      ],
+      "name": "setMarketplaceFee",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -910,6 +1265,25 @@ export const PixelCanvasABI= [
           "internalType": "string",
           "name": "",
           "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "tokensForSale",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -1013,5 +1387,6 @@ export const PixelCanvasABI= [
       "stateMutability": "nonpayable",
       "type": "function"
     }
-  ] as const;
+  ]   as const;
+   
 

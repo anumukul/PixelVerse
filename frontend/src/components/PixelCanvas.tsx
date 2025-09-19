@@ -27,9 +27,12 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     dragStart,
     batchMode,
     selection,
+    shapeMode,
+    freehandPath,
     hoveredPixel,
     tooltipPosition,
     showTooltip,
+    showGrid,
     setDragStart,
     setViewPort,
     addPendingPixel,
@@ -38,9 +41,12 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     startSelection,
     updateSelection,
     endSelection,
+    addToFreehandPath,
+    clearFreehandPath,
     setHoveredPixel,
     hideTooltip,
-    getPixelAt
+    getPixelAt,
+    getSelectedPixels
   } = useCanvasStore();
   const { 
     showOwnedPixels, 
@@ -53,8 +59,8 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
   const pendingPixels = useRef(new Map<string, {x: number, y: number, timeout: NodeJS.Timeout}>());
   const lastBlockchainCursorUpdate = useRef(0);
   const lastCursorPosition = useRef({ x: -1, y: -1 });
+  const isDrawingFreehand = useRef(false);
 
-  // Update portfolio when pixels change
   useEffect(() => {
     if (address && isConnected) {
       updateOwnedPixels(address, pixels);
@@ -76,6 +82,106 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     return colors[Math.abs(hash) % colors.length];
   };
 
+  const drawShapePreview = useCallback((ctx: CanvasRenderingContext2D) => {
+    if (!batchMode || !selection) return;
+
+    const { startX, startY, endX, endY } = selection;
+    
+    switch (shapeMode) {
+      case 'rectangle': {
+        const minX = Math.min(startX, endX);
+        const maxX = Math.max(startX, endX);
+        const minY = Math.min(startY, endY);
+        const maxY = Math.max(startY, endY);
+        
+        const screenStartX = (minX - viewPort.x) * viewPort.scale + ctx.canvas.width / 2;
+        const screenStartY = (minY - viewPort.y) * viewPort.scale + ctx.canvas.height / 2;
+        const screenEndX = (maxX + 1 - viewPort.x) * viewPort.scale + ctx.canvas.width / 2;
+        const screenEndY = (maxY + 1 - viewPort.y) * viewPort.scale + ctx.canvas.height / 2;
+        
+        ctx.strokeStyle = '#3B82F6';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.8;
+        ctx.strokeRect(screenStartX, screenStartY, screenEndX - screenStartX, screenEndY - screenStartY);
+        
+        ctx.fillStyle = selectedColor;
+        ctx.globalAlpha = 0.2;
+        ctx.fillRect(screenStartX, screenStartY, screenEndX - screenStartX, screenEndY - screenStartY);
+        break;
+      }
+      
+      case 'circle': {
+        const centerX = startX;
+        const centerY = startY;
+        const radius = Math.max(Math.abs(endX - startX), Math.abs(endY - startY));
+        
+        const screenCenterX = (centerX - viewPort.x) * viewPort.scale + ctx.canvas.width / 2;
+        const screenCenterY = (centerY - viewPort.y) * viewPort.scale + ctx.canvas.height / 2;
+        const screenRadius = radius * viewPort.scale;
+        
+        ctx.strokeStyle = '#3B82F6';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.arc(screenCenterX, screenCenterY, screenRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        ctx.fillStyle = selectedColor;
+        ctx.globalAlpha = 0.2;
+        ctx.fill();
+        break;
+      }
+      
+      case 'line': {
+        const screenStartX = (startX - viewPort.x) * viewPort.scale + ctx.canvas.width / 2;
+        const screenStartY = (startY - viewPort.y) * viewPort.scale + ctx.canvas.height / 2;
+        const screenEndX = (endX - viewPort.x) * viewPort.scale + ctx.canvas.width / 2;
+        const screenEndY = (endY - viewPort.y) * viewPort.scale + ctx.canvas.height / 2;
+        
+        ctx.strokeStyle = '#3B82F6';
+        ctx.lineWidth = 3;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(screenStartX, screenStartY);
+        ctx.lineTo(screenEndX, screenEndY);
+        ctx.stroke();
+        break;
+      }
+    }
+  }, [batchMode, selection, shapeMode, selectedColor, viewPort]);
+
+  const drawFreehandPreview = useCallback((ctx: CanvasRenderingContext2D) => {
+    if (shapeMode !== 'freehand' || freehandPath.length === 0) return;
+
+    ctx.strokeStyle = '#3B82F6';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+
+    freehandPath.forEach((point, index) => {
+      const screenX = (point.x - viewPort.x) * viewPort.scale + ctx.canvas.width / 2;
+      const screenY = (point.y - viewPort.y) * viewPort.scale + ctx.canvas.height / 2;
+      
+      if (index === 0) {
+        ctx.moveTo(screenX, screenY);
+      } else {
+        ctx.lineTo(screenX, screenY);
+      }
+    });
+    
+    ctx.stroke();
+
+    freehandPath.forEach((point) => {
+      const screenX = (point.x - viewPort.x) * viewPort.scale + ctx.canvas.width / 2;
+      const screenY = (point.y - viewPort.y) * viewPort.scale + ctx.canvas.height / 2;
+      const pixelSize = Math.max(2, viewPort.scale);
+      
+      ctx.fillStyle = selectedColor;
+      ctx.globalAlpha = 0.6;
+      ctx.fillRect(screenX, screenY, pixelSize, pixelSize);
+    });
+  }, [shapeMode, freehandPath, selectedColor, viewPort]);
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -87,6 +193,37 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     ctx.fillStyle = '#f8f9fa';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Draw grid when zoomed in or when explicitly enabled
+    if ((viewPort.scale >= 2 && showGrid) || (showGrid && viewPort.scale >= 1)) {
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 0.5;
+      ctx.globalAlpha = 0.3;
+      
+      const startX = Math.floor(viewPort.x - canvas.width / 2 / viewPort.scale);
+      const endX = Math.ceil(viewPort.x + canvas.width / 2 / viewPort.scale);
+      const startY = Math.floor(viewPort.y - canvas.height / 2 / viewPort.scale);
+      const endY = Math.ceil(viewPort.y + canvas.height / 2 / viewPort.scale);
+      
+      for (let x = startX; x <= endX; x++) {
+        const screenX = (x - viewPort.x) * viewPort.scale + canvas.width / 2;
+        ctx.beginPath();
+        ctx.moveTo(screenX, 0);
+        ctx.lineTo(screenX, canvas.height);
+        ctx.stroke();
+      }
+      
+      for (let y = startY; y <= endY; y++) {
+        const screenY = (y - viewPort.y) * viewPort.scale + canvas.height / 2;
+        ctx.beginPath();
+        ctx.moveTo(0, screenY);
+        ctx.lineTo(canvas.width, screenY);
+        ctx.stroke();
+      }
+      
+      ctx.globalAlpha = 1.0;
+    }
+
+    // Draw pixels
     pixels.forEach((pixel) => {
       if (pixel.painter === 'pending') {
         ctx.globalAlpha = 0.5; 
@@ -108,7 +245,6 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
         ctx.globalAlpha = 0.8;
         ctx.strokeRect(screenX - 1, screenY - 1, pixelSize + 2, pixelSize + 2);
         
-        // Add corner indicator for owned pixels
         if (viewPort.scale >= 3) {
           ctx.fillStyle = '#10B981';
           ctx.fillRect(screenX + pixelSize - 2, screenY, 2, 2);
@@ -122,7 +258,6 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
         ctx.globalAlpha = 1.0;
         ctx.strokeRect(screenX - 2, screenY - 2, pixelSize + 4, pixelSize + 4);
         
-        // Add glow effect
         ctx.shadowColor = '#F59E0B';
         ctx.shadowBlur = Math.max(2, viewPort.scale * 0.5);
         ctx.strokeRect(screenX - 1, screenY - 1, pixelSize + 2, pixelSize + 2);
@@ -138,26 +273,10 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
       }
     });
 
-    // Batch selection rectangle
-    if (batchMode && selection) {
-      const minX = Math.min(selection.startX, selection.endX);
-      const maxX = Math.max(selection.startX, selection.endX);
-      const minY = Math.min(selection.startY, selection.endY);
-      const maxY = Math.max(selection.startY, selection.endY);
-      
-      const screenStartX = (minX - viewPort.x) * viewPort.scale + canvas.width / 2;
-      const screenStartY = (minY - viewPort.y) * viewPort.scale + canvas.height / 2;
-      const screenEndX = (maxX + 1 - viewPort.x) * viewPort.scale + canvas.width / 2;
-      const screenEndY = (maxY + 1 - viewPort.y) * viewPort.scale + canvas.height / 2;
-      
-      ctx.strokeStyle = '#3B82F6';
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = 0.8;
-      ctx.strokeRect(screenStartX, screenStartY, screenEndX - screenStartX, screenEndY - screenStartY);
-      
-      ctx.fillStyle = selectedColor;
-      ctx.globalAlpha = 0.2;
-      ctx.fillRect(screenStartX, screenStartY, screenEndX - screenStartX, screenEndY - screenStartY);
+    // Draw shape previews
+    if (batchMode) {
+      drawShapePreview(ctx);
+      drawFreehandPreview(ctx);
     }
 
     // User cursors
@@ -196,7 +315,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     });
     
     ctx.globalAlpha = 1.0; 
-  }, [pixels, cursors, viewPort, address, batchMode, selection, selectedColor, hoveredPixel, showOwnedPixels, isUserPixel]);
+  }, [pixels, cursors, viewPort, address, batchMode, hoveredPixel, showOwnedPixels, isUserPixel, drawShapePreview, drawFreehandPreview]);
 
   useEffect(() => {
     draw();
@@ -226,7 +345,11 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     } else if (batchMode && selection?.isSelecting) {
       const { x, y } = screenToCanvas(e.clientX, e.clientY);
       if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
-        updateSelection(x, y);
+        if (shapeMode === 'freehand' && isDrawingFreehand.current) {
+          addToFreehandPath(x, y);
+        } else {
+          updateSelection(x, y);
+        }
       }
       hideTooltip();
     } else if (isConnected && address) {
@@ -271,6 +394,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
   const handleMouseLeave = () => {
     hideTooltip();
     setDragStart(null);
+    isDrawingFreehand.current = false;
   };
 
   const handleClick = async (e: React.MouseEvent) => {
@@ -318,7 +442,13 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
       hideTooltip();
     } else if (batchMode && e.button === 0) {
       if (x >= 0 && x < CANVAS_SIZE && y >= 0 && y < CANVAS_SIZE) {
-        startSelection(x, y);
+        if (shapeMode === 'freehand') {
+          isDrawingFreehand.current = true;
+          clearFreehandPath();
+          addToFreehandPath(x, y);
+        } else {
+          startSelection(x, y);
+        }
       }
       hideTooltip();
     }
@@ -330,6 +460,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     } else {
       setDragStart(null);
     }
+    isDrawingFreehand.current = false;
   };
 
   useEffect(() => {
