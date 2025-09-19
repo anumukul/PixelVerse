@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useCanvasStore } from '../stores/canvasStore.ts';
+import { useCanvasStore } from '../stores/canvasStore';
 import { useContractEvents } from '../hooks/useContractEvents';
 import type { Pixel } from '../types';
 

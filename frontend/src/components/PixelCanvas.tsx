@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
-import { useCanvasStore } from '../stores/canvasStore.ts';
+import { useCanvasStore } from '../stores/canvasStore';
 import { usePortfolioStore } from '../stores/portfolioStore';
 import { useWalletStore } from '../stores/walletStore';
 import { PixelTooltip } from './PixelTooltip';

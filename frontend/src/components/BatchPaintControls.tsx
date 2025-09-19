@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
-import { useCanvasStore } from '../stores/canvasStore.ts';
+import { useCanvasStore } from '../stores/canvasStore';
 import { useWalletStore } from '../stores/walletStore';
 
 interface BatchPaintControlsProps {
@@ -50,7 +50,7 @@ export const BatchPaintControls: React.FC<BatchPaintControlsProps> = ({
     if (!hasSelection || !isConnected) return;
 
     try {
-      const pixelsToPaint = selectedPixels.map(({ x, y }) => ({
+      const pixelsToPaint = selectedPixels.map(({ x, y }: { x: number; y: number }) => ({
         x,
         y,
         color: selectedColor

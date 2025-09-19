@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCanvasStore } from '../stores/canvasStore.ts';
+import { useCanvasStore } from '../stores/canvasStore';
 import type { Pixel } from '../types';
 
 export const CanvasExportControls: React.FC = () => {
