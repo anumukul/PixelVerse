@@ -254,6 +254,9 @@ contract PixelCanvas is ERC721, Ownable, ReentrancyGuard {
         _removeFromMarketplace(tokenId);
         _transfer(seller, msg.sender, tokenId);
 
+        // CRITICAL FIX: Update pixel ownership
+        pixels[tokenId].painter = msg.sender;
+
         _removePixelFromUser(seller, tokenId);
         userPixels[msg.sender].push(tokenId);
 

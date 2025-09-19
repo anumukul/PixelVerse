@@ -41,14 +41,11 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
   updateOwnedPixels: (userAddress, allPixels) => {
     console.log('Portfolio Store: Updating pixels for user:', userAddress);
     console.log('Portfolio Store: Total pixels received:', allPixels.size);
-    console.log('Portfolio Store: All pixels:', Array.from(allPixels.entries()));
     
     const owned = Array.from(allPixels.values()).filter(pixel => {
       const isPainter = pixel.painter.toLowerCase() === userAddress.toLowerCase();
       const notPending = pixel.painter !== 'pending';
       const isValid = pixel.painter !== '0x0000000000000000000000000000000000000000';
-      
-      console.log(`Portfolio Store: Pixel (${pixel.x},${pixel.y}) - painter: ${pixel.painter}, user: ${userAddress}, isPainter: ${isPainter}, notPending: ${notPending}, isValid: ${isValid}`);
       
       return isPainter && notPending && isValid;
     });
@@ -159,8 +156,10 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
   },
 
   isUserPixel: (pixel, userAddress) => {
-    const result = pixel.painter.toLowerCase() === userAddress.toLowerCase() && pixel.painter !== 'pending';
-    return result;
+    // Enhanced ownership check
+    return pixel.painter.toLowerCase() === userAddress.toLowerCase() && 
+           pixel.painter !== 'pending' &&
+           pixel.painter !== '0x0000000000000000000000000000000000000000';
   },
 
   getOwnedPixelsAtCoordinate: (x, y, userAddress) => {
@@ -173,6 +172,6 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
   },
 
   navigateToPixel: (pixel) => {
-    
+    // This function can be implemented if needed
   }
 }));

@@ -127,23 +127,34 @@ export const MyPixelsDashboard: React.FC = () => {
         abi: PixelCanvasABI,
         functionName: 'getUserPixels',
         args: [address]
-      });
+      }) as readonly bigint[];
 
       const saleDataMap = new Map();
       
-      for (const tokenId of userTokenIds as bigint[]) {
+      for (const tokenId of userTokenIds) {
         try {
-          const saleInfo = await publicClient.readContract({
+          // Verify current ownership before checking sale status
+          const currentOwner = await publicClient.readContract({
             address: deploymentInfo.contractAddress as `0x${string}`,
             abi: PixelCanvasABI,
-            functionName: 'getPixelSaleInfo',
+            functionName: 'ownerOf',
             args: [tokenId]
-          });
+          }) as string;
 
-          saleDataMap.set(tokenId.toString(), {
-            isForSale: saleInfo[0],
-            price: saleInfo[0] ? formatEther(saleInfo[1]) : '0'
-          });
+          // Only check sale info if user still owns the token
+          if (currentOwner.toLowerCase() === address.toLowerCase()) {
+            const saleInfo = await publicClient.readContract({
+              address: deploymentInfo.contractAddress as `0x${string}`,
+              abi: PixelCanvasABI,
+              functionName: 'getPixelSaleInfo',
+              args: [tokenId]
+            }) as readonly [boolean, bigint, string];
+
+            saleDataMap.set(tokenId.toString(), {
+              isForSale: saleInfo[0],
+              price: saleInfo[0] ? formatEther(saleInfo[1]) : '0'
+            });
+          }
         } catch (error) {
           console.error('Error loading sale info for token:', tokenId, error);
         }
@@ -188,34 +199,42 @@ export const MyPixelsDashboard: React.FC = () => {
   };
 
   const getTokenIdForPixel = async (pixel: any) => {
-    if (!publicClient) return null;
+    if (!publicClient || !address) return null;
     
     try {
-      const pixelData = await publicClient.readContract({
-        address: deploymentInfo.contractAddress as `0x${string}`,
-        abi: PixelCanvasABI,
-        functionName: 'getPixelByCoordinates',
-        args: [pixel.x, pixel.y]
-      });
-      
-      const coordHash = `${pixel.x}-${pixel.y}`;
+      // Get all user's token IDs
       const allTokenIds = await publicClient.readContract({
         address: deploymentInfo.contractAddress as `0x${string}`,
         abi: PixelCanvasABI,
         functionName: 'getUserPixels',
         args: [address]
-      });
+      }) as readonly bigint[];
       
-      for (const tokenId of allTokenIds as bigint[]) {
-        const tokenPixelData = await publicClient.readContract({
-          address: deploymentInfo.contractAddress as `0x${string}`,
-          abi: PixelCanvasABI,
-          functionName: 'pixels',
-          args: [tokenId]
-        });
-        
-        if (Number(tokenPixelData[0]) === pixel.x && Number(tokenPixelData[1]) === pixel.y) {
-          return tokenId.toString();
+      // Find the token that matches this pixel's coordinates
+      for (const tokenId of allTokenIds) {
+        try {
+          // Verify ownership first
+          const currentOwner = await publicClient.readContract({
+            address: deploymentInfo.contractAddress as `0x${string}`,
+            abi: PixelCanvasABI,
+            functionName: 'ownerOf',
+            args: [tokenId]
+          }) as string;
+
+          if (currentOwner.toLowerCase() === address.toLowerCase()) {
+            const tokenPixelData = await publicClient.readContract({
+              address: deploymentInfo.contractAddress as `0x${string}`,
+              abi: PixelCanvasABI,
+              functionName: 'pixels',
+              args: [tokenId]
+            }) as readonly [number, number, number, string, number, number];
+            
+            if (Number(tokenPixelData[0]) === pixel.x && Number(tokenPixelData[1]) === pixel.y) {
+              return tokenId.toString();
+            }
+          }
+        } catch (error) {
+          console.error('Error checking token:', tokenId, error);
         }
       }
       
@@ -228,7 +247,10 @@ export const MyPixelsDashboard: React.FC = () => {
 
   const handlePixelAction = async (pixel: any, action: 'sell' | 'remove') => {
     const tokenId = await getTokenIdForPixel(pixel);
-    if (!tokenId) return;
+    if (!tokenId) {
+      console.error('Could not find token ID for pixel', pixel);
+      return;
+    }
 
     if (action === 'sell') {
       setSellModal({
@@ -253,11 +275,12 @@ export const MyPixelsDashboard: React.FC = () => {
     return new Date(timestamp * 1000).toLocaleDateString();
   };
 
-  const getPixelSaleStatus = async (pixel: any) => {
+  const isPixelForSale = async (pixel: any): Promise<boolean> => {
     const tokenId = await getTokenIdForPixel(pixel);
-    if (!tokenId) return { isForSale: false, price: '0' };
+    if (!tokenId) return false;
     
-    return pixelSaleData.get(tokenId) || { isForSale: false, price: '0' };
+    const saleData = pixelSaleData.get(tokenId);
+    return saleData?.isForSale || false;
   };
 
   if (!isConnected) return null;
@@ -332,6 +355,7 @@ export const MyPixelsDashboard: React.FC = () => {
                       className="w-3 h-3 rounded border border-gray-300 cursor-pointer"
                       style={{ backgroundColor: pixel.color }}
                       onClick={() => navigateToPixel(pixel)}
+                      title="Click to navigate"
                     />
                     <div className="flex-1">
                       <div className="font-medium">({pixel.x}, {pixel.y})</div>

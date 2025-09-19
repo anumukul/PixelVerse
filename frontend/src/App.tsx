@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { WalletConnect } from './components/WalletConnect';
 import { ColorPalette } from './components/ColorPalette';

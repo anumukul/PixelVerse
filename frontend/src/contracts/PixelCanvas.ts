@@ -1387,6 +1387,6 @@ export const PixelCanvasABI=  [
       "stateMutability": "nonpayable",
       "type": "function"
     }
-  ]   as const;
+  ]  as const;
    
 

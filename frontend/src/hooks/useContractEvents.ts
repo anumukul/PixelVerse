@@ -47,7 +47,6 @@ export const useContractEvents = () => {
             processedEvents.current.add(eventId);
             paintedPixelCoords.current.add(`${pixel.x}-${pixel.y}`);
             
-           
             if (address && pixel.painter.toLowerCase() === address.toLowerCase()) {
               setTimeout(() => loadUserPixels(address), 500);
             }
@@ -72,16 +71,99 @@ export const useContractEvents = () => {
             price: args.price?.toString()
           });
           
-         
-          if (address && (
-            args.seller?.toLowerCase() === address.toLowerCase() || 
-            args.buyer?.toLowerCase() === address.toLowerCase()
-          )) {
-            console.log('Reloading pixels due to PixelSold event for current user');
-            setTimeout(() => {
-              loadUserPixels(address);
-            }, 1000);
-          }
+          // Update pixel ownership after sale
+          setTimeout(async () => {
+            try {
+              const pixelData = await publicClient?.readContract({
+                address: deploymentInfo.contractAddress as `0x${string}`,
+                abi: PixelCanvasABI,
+                functionName: 'pixels',
+                args: [args.tokenId]
+              }) as readonly [number, number, number, string, number, number];
+
+              if (pixelData) {
+                const updatedPixel: Pixel = {
+                  x: Number(pixelData[0]),
+                  y: Number(pixelData[1]),
+                  color: `#${Number(pixelData[2]).toString(16).padStart(6, '0')}`,
+                  painter: args.buyer as string, // Should now be updated to buyer
+                  timestamp: Number(pixelData[4]),
+                  version: Number(pixelData[5])
+                };
+                
+                setPixel(updatedPixel);
+                console.log('Updated pixel ownership after sale:', updatedPixel);
+              }
+            } catch (error) {
+              console.error('Error updating pixel after sale:', error);
+            }
+            
+            // Reload pixels for both seller and buyer
+            if (address && (
+              args.seller?.toLowerCase() === address.toLowerCase() || 
+              args.buyer?.toLowerCase() === address.toLowerCase()
+            )) {
+              console.log('Reloading pixels due to PixelSold event for current user');
+              setTimeout(() => loadUserPixels(address), 1000);
+            }
+          }, 500);
+        }
+      });
+    },
+  });
+
+  // NEW: Add Transfer event listener to catch all NFT transfers
+  useWatchContractEvent({
+    address: deploymentInfo.contractAddress as `0x${string}`,
+    abi: PixelCanvasABI,
+    eventName: 'Transfer',
+    onLogs(logs) {
+      logs.forEach((log) => {
+        const { args } = log;
+        // Only handle marketplace transfers (not minting)
+        if (args && args.from !== '0x0000000000000000000000000000000000000000') {
+          console.log('Transfer event detected:', {
+            from: args.from,
+            to: args.to,
+            tokenId: args.tokenId?.toString()
+          });
+          
+          // Update pixel ownership for transfers
+          setTimeout(async () => {
+            try {
+              const pixelData = await publicClient?.readContract({
+                address: deploymentInfo.contractAddress as `0x${string}`,
+                abi: PixelCanvasABI,
+                functionName: 'pixels',
+                args: [args.tokenId]
+              }) as readonly [number, number, number, string, number, number];
+
+              if (pixelData) {
+                const updatedPixel: Pixel = {
+                  x: Number(pixelData[0]),
+                  y: Number(pixelData[1]),
+                  color: `#${Number(pixelData[2]).toString(16).padStart(6, '0')}`,
+                  painter: args.to as string, // Update to new owner
+                  timestamp: Number(pixelData[4]),
+                  version: Number(pixelData[5])
+                };
+                
+                setPixel(updatedPixel);
+                console.log('Updated pixel ownership after transfer:', updatedPixel);
+              }
+            } catch (error) {
+              console.error('Error updating pixel after transfer:', error);
+            }
+
+            // Reload pixels for both parties
+            if (address && (
+              args.from?.toLowerCase() === address.toLowerCase() || 
+              args.to?.toLowerCase() === address.toLowerCase()
+            )) {
+              console.log('Reloading pixels due to Transfer event for current user');
+              setTimeout(() => loadUserPixels(address), 1000);
+            }
+          }, 500);
         }
       });
     },
@@ -141,32 +223,44 @@ export const useContractEvents = () => {
       
       for (const tokenId of userPixelIds) {
         try {
-          const pixelData = await publicClient.readContract({
-            address: deploymentInfo.contractAddress as `0x${string}`,
-            abi: PixelCanvasABI,
-            functionName: 'pixels',
-            args: [tokenId]
-          }) as readonly [number, number, number, string, number, number];
+          // Get both pixel data and verify actual ownership
+          const [pixelData, currentOwner] = await Promise.all([
+            publicClient.readContract({
+              address: deploymentInfo.contractAddress as `0x${string}`,
+              abi: PixelCanvasABI,
+              functionName: 'pixels',
+              args: [tokenId]
+            }) as Promise<readonly [number, number, number, string, number, number]>,
+            publicClient.readContract({
+              address: deploymentInfo.contractAddress as `0x${string}`,
+              abi: PixelCanvasABI,
+              functionName: 'ownerOf',
+              args: [tokenId]
+            }) as Promise<string>
+          ]);
 
-          if (pixelData && pixelData[3] !== '0x0000000000000000000000000000000000000000') {
+          // Only include pixels that user actually owns
+          if (pixelData && currentOwner.toLowerCase() === userAddress.toLowerCase()) {
             const pixel: Pixel = {
               x: Number(pixelData[0]),
               y: Number(pixelData[1]),
               color: `#${Number(pixelData[2]).toString(16).padStart(6, '0')}`,
-              painter: pixelData[3] as string,
+              painter: currentOwner, // Use verified owner
               timestamp: Number(pixelData[4]),
               version: Number(pixelData[5])
             };
 
-            console.log('loadUserPixels: Loaded pixel:', pixel);
+            console.log('loadUserPixels: Loaded owned pixel:', pixel);
             userPixels.push(pixel);
             
-           
+            // Update canvas with correct ownership
             const existing = getPixelAt(pixel.x, pixel.y);
-            if (!existing || existing.version < pixel.version) {
+            if (!existing || existing.version <= pixel.version) {
               setPixel(pixel);
               paintedPixelCoords.current.add(`${pixel.x}-${pixel.y}`);
             }
+          } else {
+            console.log(`loadUserPixels: Skipping token ${tokenId} - not owned by user. Owner: ${currentOwner}, User: ${userAddress}`);
           }
         } catch (error) {
           console.error('loadUserPixels: Error loading pixel data for token:', tokenId.toString(), error);
@@ -175,7 +269,7 @@ export const useContractEvents = () => {
 
       console.log('loadUserPixels: Total loaded user pixels:', userPixels.length);
       
-     
+      // Force update portfolio store
       forceRefresh(userAddress, userPixels);
       
       console.log('loadUserPixels: User pixels loaded and portfolio refreshed successfully');

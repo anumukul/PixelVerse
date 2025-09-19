@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
 import { formatEther, parseEther } from 'viem';
 import { useCanvasStore } from '../stores/canvasStore';
+import { useContractEvents } from '../hooks/useContractEvents';
 import deploymentInfo from '../../deployment-info.json';
 import { PixelCanvasABI } from '../contracts/PixelCanvas';
 
@@ -102,7 +103,8 @@ export const MarketplacePanel: React.FC = () => {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { writeContract } = useWriteContract();
-  const { setViewPort } = useCanvasStore();
+  const { setViewPort, setPixel } = useCanvasStore();
+  const { loadUserPixels } = useContractEvents();
   
   const [activeTab, setActiveTab] = useState<'browse' | 'selling'>('browse');
   const [marketplaceItems, setMarketplaceItems] = useState<MarketplaceItem[]>([]);
@@ -199,11 +201,46 @@ export const MarketplacePanel: React.FC = () => {
       
       console.log('Purchase transaction hash:', hash);
       
-      // Wait longer for transaction confirmation
-      setTimeout(() => {
-        console.log('Reloading marketplace data...');
+      // Enhanced post-purchase updates
+      setTimeout(async () => {
+        console.log('Updating after purchase...');
+        
+        try {
+          // Get updated pixel data
+          const pixelData = await publicClient.readContract({
+            address: deploymentInfo.contractAddress as `0x${string}`,
+            abi: PixelCanvasABI,
+            functionName: 'pixels',
+            args: [BigInt(tokenId)]
+          }) as readonly [number, number, number, string, number, number];
+
+          if (pixelData) {
+            // Force update canvas with new owner
+            const updatedPixel = {
+              x: Number(pixelData[0]),
+              y: Number(pixelData[1]),
+              color: `#${Number(pixelData[2]).toString(16).padStart(6, '0')}`,
+              painter: pixelData[3], // Should now be the buyer
+              timestamp: Number(pixelData[4]),
+              version: Number(pixelData[5])
+            };
+            
+            // Update canvas directly
+            setPixel(updatedPixel);
+            console.log('Updated pixel ownership:', updatedPixel);
+          }
+        } catch (error) {
+          console.error('Error updating pixel:', error);
+        }
+        
+        // Reload marketplace and user data
         loadMarketplaceData();
-      }, 3000);
+        
+        // Force reload user pixels if this user made the purchase
+        if (address) {
+          setTimeout(() => loadUserPixels(address), 1000);
+        }
+      }, 2000);
       
     } catch (error) {
       console.error('Purchase failed:', error);
