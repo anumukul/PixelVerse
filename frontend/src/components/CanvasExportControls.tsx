@@ -1,5 +1,6 @@
 import React from 'react';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useCanvasStore } from '../stores/canvasStore.ts';
+import type { Pixel } from '../types';
 
 export const CanvasExportControls: React.FC = () => {
   const { pixels, viewPort } = useCanvasStore();
@@ -15,7 +16,7 @@ export const CanvasExportControls: React.FC = () => {
     ctx.fillStyle = '#f8f9fa';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    pixels.forEach((pixel) => {
+    pixels.forEach((pixel: Pixel) => {
       if (pixel.painter === 'pending') return;
       
       const screenX = (pixel.x - viewPort.x) * viewPort.scale + canvas.width / 2;
@@ -41,14 +42,14 @@ export const CanvasExportControls: React.FC = () => {
     }
 
     let minX = 1000, maxX = 0, minY = 1000, maxY = 0;
-    const validPixels = Array.from(pixels.values()).filter(p => p.painter !== 'pending');
+    const validPixels = Array.from(pixels.values()).filter((p: Pixel) => p.painter !== 'pending');
     
     if (validPixels.length === 0) {
       alert('No valid pixels to export!');
       return;
     }
 
-    validPixels.forEach(pixel => {
+    validPixels.forEach((pixel: Pixel) => {
       minX = Math.min(minX, pixel.x);
       maxX = Math.max(maxX, pixel.x);
       minY = Math.min(minY, pixel.y);
@@ -69,7 +70,7 @@ export const CanvasExportControls: React.FC = () => {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    validPixels.forEach(pixel => {
+    validPixels.forEach((pixel: Pixel) => {
       ctx.fillStyle = pixel.color;
       ctx.fillRect(
         (pixel.x - minX) * scale,
@@ -86,9 +87,9 @@ export const CanvasExportControls: React.FC = () => {
   };
 
   const exportStats = () => {
-    const validPixels = Array.from(pixels.values()).filter(p => p.painter !== 'pending');
-    const painters = new Set(validPixels.map(p => p.painter));
-    const colors = new Set(validPixels.map(p => p.color));
+    const validPixels = Array.from(pixels.values()).filter((p: Pixel) => p.painter !== 'pending');
+    const painters = new Set(validPixels.map((p: Pixel) => p.painter));
+    const colors = new Set(validPixels.map((p: Pixel) => p.color));
 
     const stats = {
       totalPixels: validPixels.length,
@@ -96,7 +97,7 @@ export const CanvasExportControls: React.FC = () => {
       uniqueColors: colors.size,
       canvasArea: `${1000}x${1000}`,
       exportDate: new Date().toISOString(),
-      pixels: validPixels.map(p => ({
+      pixels: validPixels.map((p: Pixel) => ({
         coordinates: [p.x, p.y],
         color: p.color,
         painter: p.painter,

@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useCanvasStore } from '../stores/canvasStore.ts';
 import { usePortfolioStore } from '../stores/portfolioStore';
 import { useWalletStore } from '../stores/walletStore';
 import { PixelTooltip } from './PixelTooltip';
+import type { Pixel, UserCursor } from '../types';
 
 const CANVAS_SIZE = 1000;
 const CURSOR_BLOCKCHAIN_THROTTLE = 3000;
@@ -156,7 +157,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     ctx.globalAlpha = 0.8;
     ctx.beginPath();
 
-    freehandPath.forEach((point, index) => {
+    freehandPath.forEach((point: {x: number, y: number}, index: number) => {
       const screenX = (point.x - viewPort.x) * viewPort.scale + ctx.canvas.width / 2;
       const screenY = (point.y - viewPort.y) * viewPort.scale + ctx.canvas.height / 2;
       
@@ -169,7 +170,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     
     ctx.stroke();
 
-    freehandPath.forEach((point) => {
+    freehandPath.forEach((point: {x: number, y: number}) => {
       const screenX = (point.x - viewPort.x) * viewPort.scale + ctx.canvas.width / 2;
       const screenY = (point.y - viewPort.y) * viewPort.scale + ctx.canvas.height / 2;
       const pixelSize = Math.max(2, viewPort.scale);
@@ -222,7 +223,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     }
 
     // Draw pixels
-    pixels.forEach((pixel) => {
+    pixels.forEach((pixel: Pixel) => {
       if (pixel.painter === 'pending') {
         ctx.globalAlpha = 0.5; 
       } else {
@@ -278,7 +279,7 @@ export const PixelCanvas: React.FC<PixelCanvasProps> = ({
     }
 
     // User cursors
-    cursors.forEach((cursor) => {
+    cursors.forEach((cursor: UserCursor) => {
       if (cursor.address === address) return;
       
       const screenX = (cursor.x - viewPort.x) * viewPort.scale + canvas.width / 2;

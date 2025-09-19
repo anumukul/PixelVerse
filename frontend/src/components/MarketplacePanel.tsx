@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
 import { formatEther, parseEther } from 'viem';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useCanvasStore } from '../stores/canvasStore.ts';
 import { useContractEvents } from '../hooks/useContractEvents';
 import deploymentInfo from '../../deployment-info.json';
 import { PixelCanvasABI } from '../contracts/PixelCanvas';

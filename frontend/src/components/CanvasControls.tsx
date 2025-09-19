@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useCanvasStore } from '../stores/canvasStore.ts';
 import { useContractEvents } from '../hooks/useContractEvents';
+import type { Pixel } from '../types';
 
 export const CanvasControls: React.FC = () => {
   const { viewPort, pixels, setViewPort, showGrid, setShowGrid } = useCanvasStore();
@@ -26,7 +27,7 @@ export const CanvasControls: React.FC = () => {
   };
 
   const fitToContent = () => {
-    const validPixels = Array.from(pixels.values()).filter(p => p.painter !== 'pending');
+    const validPixels = Array.from(pixels.values()).filter((p: Pixel) => p.painter !== 'pending');
     
     if (validPixels.length === 0) {
       centerView();
@@ -34,7 +35,7 @@ export const CanvasControls: React.FC = () => {
     }
 
     let minX = 1000, maxX = 0, minY = 1000, maxY = 0;
-    validPixels.forEach(pixel => {
+    validPixels.forEach((pixel: Pixel) => {
       minX = Math.min(minX, pixel.x);
       maxX = Math.max(maxX, pixel.x);
       minY = Math.min(minY, pixel.y);
@@ -162,7 +163,7 @@ export const CanvasControls: React.FC = () => {
       <div className="mt-3 p-2 bg-gray-50 rounded text-xs space-y-1">
         <div>Zoom: {(viewPort.scale * 100).toFixed(0)}%</div>
         <div>Position: {Math.round(viewPort.x)}, {Math.round(viewPort.y)}</div>
-        <div>Pixels: {Array.from(pixels.values()).filter(p => p.painter !== 'pending').length}</div>
+        <div>Pixels: {Array.from(pixels.values()).filter((p: Pixel) => p.painter !== 'pending').length}</div>
         <div>Grid: {showGrid ? 'Visible' : 'Hidden'}</div>
       </div>
 

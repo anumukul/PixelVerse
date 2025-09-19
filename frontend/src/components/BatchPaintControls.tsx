@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useCanvasStore } from '../stores/canvasStore.ts';
 import { useWalletStore } from '../stores/walletStore';
 
 interface BatchPaintControlsProps {

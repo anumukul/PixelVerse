@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { usePublicClient, useWatchContractEvent, useAccount } from 'wagmi';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useCanvasStore } from '../stores/canvasStore.ts';
 import { usePortfolioStore } from '../stores/portfolioStore';
 import type { Pixel, UserCursor } from '../types/index';
 import deploymentInfo from '../../deployment-info.json';

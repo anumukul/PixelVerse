@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePublicClient } from 'wagmi';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useCanvasStore } from '../stores/canvasStore.ts';
 import type { CanvasStats } from '../types';
 import deploymentInfo from '../../deployment-info.json';
 import { PixelCanvasABI } from '../contracts/PixelCanvas';
